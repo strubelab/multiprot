@@ -1,0 +1,37 @@
+Call for chain X; the multichain domain is modeled with both chains.
+
+To model:
+chain1(X) : histone-linker-dom1_A-linker-histone
+chain2(part of Y) : dom1_B
+bound domains: dom1_A, dom1_B
+
+For this to work with a single run, the pdb of dom1_AB must be modified so the 
+sequence and coordinates of the chain that is not bound to linkers (dom1_B) is 
+INSIDE the sequence of the other domain (dom1_A.
+The sequence in the fasta file must be modified in the same way. This is to
+ensure that the linkers will be bound to one chain only, while the other chain
+is retained with its coordinates since ranch doesn't do anything with the
+contents of the domain.
+
+# NOTE: find a way to test what happens if the atom is the same
+# probably solved by putting the sequence after the second atom
+
+Call to ranch:
+ranch seqX.fasta -q=10 -x=histone.pdb -x=dom1_AB_mod.pdb -x=histone.pdb -f=no -f=no -f=no -o=no -o=no -o=no --filesuffix=chainX  -w=chainX -i
+
+After the run, the resulting pdbs have to be modified to move the sequence
+of the chain B at the end of the pdb (before any HETATMs) as a separate chain
+
+
+
+
+
+#### DON'T MIND THESE
+
+# One molecule
+ranch first_call.fasta -q=10 -x=histone.pdb -f=no -o=no  -w=first_call -i
+
+# One molecule, multiple chains
+ranch first_call.fasta -q=10 -x=dom1_AB.pdb -f=no -o=yes  -w=first_call -i
+
+ranch first_call.fasta -q=10 -x=dom1_AB.pdb -f=no -o=yes  -w=first_call -i
