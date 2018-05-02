@@ -1,0 +1,48 @@
+Clashes warning message
+Time to complete:
+1:28 min
+1:25 min
+
+guzmanfj@kl-14330:~/Documents/Stefan/ranch/circular$ ranch seqXY.fasta -q=10 -x=00002chainX_dom1A_mod.pdb -x=00002chainX_dom2B_mod.pdb -f=yes -f=yes -o=no -o=no --filesuffix=chainXY  -w=chainXY -i
+*******  ------------------------------------------------------  *******
+*******     RANCH - version 2.2 - (r9988)                  *******
+*******     Copyright (c) ATSAS Team                             *******
+*******     EMBL, Hamburg Outstation, 2007 - 2015                *******
+*******                                                          *******
+*******     For doubts/questions please visit SAXIER forum:      *******
+*******     http://www.saxier.org/forum/viewforum.php?f=10       *******
+*******                                                          *******
+*******     In case of bugs please refer to:                     *******
+*******     G. Tria, D.I. Svergun, EMBL BioSAXS group            *******
+*******     atsas@embl-hamburg.de                                *******
+*******  ------------------------------------------------------  *******
+ Loading values and configuration ...
+ Number of residues per chain:         1434
+ --------------------- ATTENTION! ---------------------
+ - The domains specified as fixed may be too far away -
+ - to be connected by the linker extracted from the   -
+ - sequence. EOM 2.1 may not be able to make the pool.-
+ ------------------------------------------------------
+ --------------------- ATTENTION! ---------------------
+ - The domains specified as fixed show some clashes.  -
+ - EOM 2.1 may not be able to make the pool.          -
+ - Please consider that in case of success generating -
+ - the pool every model will show the same clashes.   -
+ ------------------------------------------------------
+ ... starts making models ...
+[  1%] qq   
+[ 10%] ^R
+^D 
+[ 20%] 
+[ 30%] 
+[ 40%] 
+[ 50%] 
+[ 60%] 
+[ 70%] 
+[ 80%] 
+[ 90%] 
+[100%]  
+ ... completed making models
+
+
+TOOK A LONG TIME
