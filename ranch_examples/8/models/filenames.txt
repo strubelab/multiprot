@@ -1,0 +1,10 @@
+00001AB_seqmod_p1.pdb
+00002AB_seqmod_p1.pdb
+00003AB_seqmod_p1.pdb
+00004AB_seqmod_p1.pdb
+00005AB_seqmod_p1.pdb
+00006AB_seqmod_p1.pdb
+00007AB_seqmod_p1.pdb
+00008AB_seqmod_p1.pdb
+00009AB_seqmod_p1.pdb
+00010AB_seqmod_p1.pdb

@@ -1,0 +1,10 @@
+000012dom_linear.pdb
+000022dom_linear.pdb
+000032dom_linear.pdb
+000042dom_linear.pdb
+000052dom_linear.pdb
+000062dom_linear.pdb
+000072dom_linear.pdb
+000082dom_linear.pdb
+000092dom_linear.pdb
+000102dom_linear.pdb

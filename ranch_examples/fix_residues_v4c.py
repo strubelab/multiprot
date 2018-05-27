@@ -59,9 +59,15 @@ for filename in filenames:
 		for j in range(index,len(data)):
 			index += 1
 			
-			char = re.search(r'[A-Z][A-Z][A-Z] [A-Z] ', data[j]).group()
-			# if NAP, add to hetatm list with the appropriate chain identifier
-			if re.search(r'NAP', data[j]):
+			char = re.search(r'[A-Z0-9][A-Z0-9][A-Z0-9] [A-Z] ', data[j])
+			if char:
+				char = char.group()
+			else:
+				print data[j]
+				raise AttributeError("IDIOT")
+			# if NAP, RET, 22B, L2P, GLC add to hetatm list with the appropriate chain 
+			# identifier
+			if re.search(r'NAP|RET|22B|L2P|GLC', data[j]):
 				hetatm[i].append(data[j].replace(char, char[0:4]+chain_identif[i]+' '))
 			# if OXT and at the end of the chain, add to the chain list
 			elif re.search(r' OXT ', data[j]) and (cacount == chainl):
@@ -69,7 +75,8 @@ for filename in filenames:
 			# if not OXT, add to the chain list
 			elif not re.search(r' OXT ', data[j]):
 				chains[i].append(data[j].replace(char, char[0:4]+chain_identif[i]+' '))
-
+			## TEST FOR OTHER CASES
+			
 			residue = data[j][17:20]
 			if re.search(r' CA ', data[j]):
 				cacount += 1

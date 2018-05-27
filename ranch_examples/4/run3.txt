@@ -1,0 +1,1 @@
+ranch sequence_mod9.seq -q=10 -x=dom1_AB.pdb -x=dom1_AB.pdb -f=no -f=no -o=no -o=no -w=2dom_3ch_2 -i

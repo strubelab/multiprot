@@ -1,0 +1,1 @@
+ranch seqX.fasta -s=p3 -q=10 -x=2ei4.pdb -x=dom1_AB_mod.pdb -f=no -f=no -o=yes -o=no --filesuffix=chainX -w=p1 -i

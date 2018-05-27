@@ -1,0 +1,1 @@
+ranch full.fasta -q=10 -x=2z6o_mod.pdb -x=Histone_H3.pdb -f=no -f=no --filesuffix=full -o=no -o=no -w=models -i

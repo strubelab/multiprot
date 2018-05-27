@@ -1,0 +1,1 @@
+ranch sequence_mod3.seq -q=10 -x=dom1_A.pdb -x=dom2.pdb -x=dom1_B.pdb -x=histone.pdb -f=yes -f=no -f=yes -f=no --filesuffix=3dom_linear -o=no -o=no -o=no -o=no -w=3dom_linear -i

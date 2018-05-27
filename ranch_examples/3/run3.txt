@@ -1,0 +1,1 @@
+ranch sequence_mod4.seq -q=10 -x=dom1_AB.pdb -f=no --filesuffix=2d_2ch -o=yes -w=2dom_2chains_2 -i

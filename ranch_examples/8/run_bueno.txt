@@ -1,0 +1,1 @@
+ranch sequence_mod.seq -q=10 -x=dom1_AB.pdb -x=dom2.pdb -f=no -f=no --filesuffix=AB_seqmod_p1 -o=no -o=no -w=2domAB_seqmod_p1_2 -i
