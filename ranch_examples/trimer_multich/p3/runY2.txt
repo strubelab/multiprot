@@ -1,0 +1,1 @@
+ranch seqY2.fasta -s=p3 -q=10 -x=dom1_AB_mod.pdb -x=00001chainX_mod_fixed_mod.pdb -x=dom1_AB_mod.pdb -f=no -f=no -f=no -o=no -o=yes -o=no --filesuffix=chainY2 -w=p3 -i
