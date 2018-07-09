@@ -36,7 +36,7 @@ class Ranch( Executor ):
 
 
    def __init__(self, *domains, chains={}, symmetry='p1', symtemplate=None, 
-      overall_sym='mixed', fixed=None, multich=None, debug=False):
+      symunit=None, overall_sym='mixed', fixed=None, multich=None, debug=False):
       
       """
       
@@ -62,8 +62,6 @@ class Ranch( Executor ):
       self.symtemplate = symtemplate
       self.doms_in = []    # list of domains as PDBModels
       self.pdbs_in = []    # list of pdb file paths
-      self.fixed = fixed
-      self.multich = multich
       self.embedded = {}   # dictionary with domain : residue number to
                            # identify and locate embedded domains
 
@@ -75,20 +73,32 @@ class Ranch( Executor ):
 
       self.overall_sym = overall_symmetry[overall_sym]
 
-      if self.fixed == None:
+      if fixed:
+         self.fixed = fixed
+      else:
          self.fixed = []
          for element in self.domains:
             if isinstance(element, B.PDBModel):
                self.fixed.append('no')
 
-      if self.multich == None:
+      if multich:
+         self.multich = multich
+      else:
          self.multich = []
          for element in self.domains:
             if isinstance(element, B.PDBModel):
-               if element == self.symtemplate:
+               if element == self.symtemplate:     # optimize?
                   self.multich.append('yes')
                else:
                   self.multich.append('no')
+
+      if symtemplate:
+         if symunit:
+            self.symunit = symunit
+         else:
+            # If there is no symunit provided, it is a single chain symunit
+            # Action: take symunit from symtemplate
+            self.symunit = symtemplate.takeChains([0])
 
       self._setup()
 
@@ -117,13 +127,24 @@ class Ranch( Executor ):
          elif isinstance(element, B.PDBModel):
             # if is PDBModel
 
-            if self.multich[i]=='yes' or element.lenChains()==1 or \
-            self.fixed[i] == 'yes':
-               # If is symmetry core or a single chain-domain ... 2
-               # Or is a domain already modeled/fixed ... 3
+            if self.multich[i]=='yes':
+               # If is symtemplate, there is symmetry ... 2
 
                # For multiple chains with symmetry, the symetric unit should 
-               # already be embedded in the (modified) symtemplate
+               # already be embedded in the (modified) symtemplate, and the
+               # symmetric unit by itself provided as the argument symunit
+
+               # Action: Add sequence of symunit to sequence and the element
+               # to domains list
+
+               # Find a way to make the symmetry test only once?
+
+               self.sequence += self.symunit.sequence()
+               self.doms_in.append(element)
+
+            elif element.lenChains()==1 or self.fixed[i] == 'yes':
+               # If is single chain-domain ... 2.1
+               # Or is a domain already modeled/fixed ... 3
 
                # THE HIGHER LEVEL PROGRAM MUST GIVE THE ENTIRE MODEL WITH
                # MULTIPLE CHAINS EMBEDDED IN ONE OF THE FIXED DOMAINS, AND
