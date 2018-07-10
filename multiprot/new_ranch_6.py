@@ -10,7 +10,7 @@ Usage
 =====
 
 >>> prot = Ranch(dom1, linker1, dom2, linker2, ..., chains = {dom1:'chainA',
-               dom2:'chainC'}, symmetry='p2', symtemplate=dom2)
+               dom2:'chainC'}, symmetry='p2', symtemplate=dom2, overall_sym='symmetry')
 
 
 """
@@ -153,8 +153,6 @@ class Ranch( Executor ):
                # 4 AND 5 IN DIAGRAM
                # IT ALSO HAS TO REMOVE THE BOUND DOMAINS THAT WILL BE
                # MODELED IN OTHER CHAINS, TO AVOID STEP 6
-
-               # Find a way to make the symmetry test only once?
                
                # Action: Add to sequence and to domains list
                # Conserve fixing
@@ -168,14 +166,16 @@ class Ranch( Executor ):
                if isinstance(self.chains[element], (list, tuple)):   # 7
                   # if the other part of the domain is bound to the
                   # same chain, the chains entry of the domain will
-                  # have a tuple with the chains to be taken, in order
+                  # have a list or tuple with the chains to be taken, in order
 
                   # Action: Embed sequence of paired domain into
                   # element. Take the sequence and domains up to this
                   # point and model. Change coordinates, fix both
                   # domains and separate as individual fixed domains. 
-                  # Go back to before adding the first dom,
+                  
+                  # Go back to before adding the first dom (or start again),
                   # proceed as normal
+                  # ALTERNATIVELY, take modeled region up to first dom as fixed?
 
                   # Be careful to put the separate domains in the correct order, 
                   # consulting self.chains[element]
@@ -192,9 +192,10 @@ class Ranch( Executor ):
                   chain_ind = element.atom2chainIndices(i_mask_chain)[0]
 
                   m = element.takeChains([chain_ind])
-                  m_emb = Ranch.embed(m, element)
+                  to_embed = Ranch.extract_fixed(m, element)
+                  m_emb = Ranch.embed(m, to_embed)
 
-                  self.embedded[m] = len(self.sequence) + 2
+                  self.embedded[to_embed] = len(self.sequence) + 2
 
                   self.sequence += m_emb.sequence()
                   self.doms_in.append(m_emb)
@@ -213,9 +214,10 @@ class Ranch( Executor ):
                   chain_ind = element.atom2chainIndices(i_mask_chain)[0]
 
                   m = element.takeChains([chain_ind])
-                  m_emb = Ranch.embed(m, element)
+                  to_embed = Ranch.extract_fixed(m, element)
+                  m_emb = Ranch.embed(m, to_embed)
                   
-                  self.embedded[m] = len(self.sequence) + 2
+                  self.embedded[to_embed] = len(self.sequence) + 2
 
                   self.sequence += m_emb.sequence()
                   self.doms_in.append(m_emb)
@@ -228,11 +230,15 @@ class Ranch( Executor ):
 
          i += 1
 
+      # Symseq is the sequence that will be multiplied in the symmetric structure
+      if self.symtemplate:
+         self.symseq = self.sequence
+
       return None
 
 
    @classmethod
-   def embed(cls, dom, int_dom):
+   def embed(cls, dom, to_embed):
       '''
       Embeds one model (int_dom - possibly with multiple chains) into another 
       (dom) to trick ranch to treat them as a simple single-chain domain
@@ -245,38 +251,10 @@ class Ranch( Executor ):
       :type int_dom: PDBModel
       '''
 
-      # See if the part to embed contains dom, and remove it if it does
-
-      start = dom.sequence()[:10]
-
-      if re.search(start, int_dom.sequence()):
-         # If the dom sequence is inside int_dom sequence
-         # Action: look for the position of dom inside int_dom, and extract
-
-         matches = re.finditer(start, int_dom.sequence())
-         first_res_dom = dom.res2atomIndices([0])
-         lowdom = first_res_dom[0]
-         highdom = first_res_dom[-1]
-
-         for match in matches:
-            index = match.start()
-            first_res_int = int_dom.res2atomIndices([index])
-
-            lowint = first_res_int[0]
-            highint = first_res_int[-1]
-
-            if N.all(dom.xyz[lowdom:highdom+1] == int_dom.xyz[lowint:highint+1]):
-               # If the atoms for the first residue are in the same positions
-               # Action: extract chain
-
-               int_dom = Ranch.extract_fixed(dom, int_dom)
-
-               break
-
       first = dom.take(dom.res2atomIndices([0,1]))
       last = dom.take(dom.res2atomIndices(list(range(2,dom.lenResidues()))))
 
-      return first.concat(int_dom,last)
+      return first.concat(to_embed,last)
       
 
    ## Make class method?
@@ -348,7 +326,7 @@ class Ranch( Executor ):
                         in the full sequence
       :type embedded: dictionary
 
-      :return: 'self' with embedded domains concatenated at the end as independent chains
+      :return: 'full' with embedded domains concatenated at the end as independent chains
       :type return: PDBModel
       """
 
@@ -391,6 +369,51 @@ class Ranch( Executor ):
       full['serial_number'] = N0.arange(1,len(full)+1)
 
       return full
+
+   @classmethod
+   def extract_symmetric(cls, full, symseq, embedded):
+      """
+      Extracts one or more embedded chains from a PDBModel with a symmetric
+      structure
+      
+      :param full: PDBModel with symmetric structure, that contains embedded chains
+      :type full: PDBModel
+
+      :param symseq: sequence of the symmetric unit, i.e. the sequence that is
+                     multiplied in the symmetric structure
+      :type symseq: string
+      :param embedded: dictionary with embedded domains and its position (index)
+                        in the sequence of 'full'
+      :type embedded: dictionary
+      :return: 'full' with embedded domains concatenated at the end for each
+               symmetric unit
+      :type full: PDBModel
+      """
+      
+      symunits = []
+
+      if re.search(symseq, full.sequence()):
+
+         matches = re.finditer(symseq, full.sequence())
+
+         for match in matches:
+            istart, iend = match.span()
+            symunit = full.takeResidues(list(range(istart, iend)))
+            # Extract embedded domains one symunit at a time
+            symunits.append(Ranch.extract_embedded(symunit, embedded))
+
+         r = symunits[0]
+
+         for i in range(1,len(symunits)):
+            r = r.concat(symunits[i])
+
+         r.addChainId()
+         r['serial_number'] = N0.arange(1,len(r)+1)
+
+      else:
+         raise TypeError("Symseq and full.sequence() don't match")
+
+      return r
 
 
    def prepare(self):
@@ -458,7 +481,13 @@ class Ranch( Executor ):
       ### Retrieve models created as PDBModels
       m_paths = [self.dir_models + '/' + f for f in os.listdir(
          self.dir_models)]
-      self.result = [Ranch.extract_embedded(B.PDBModel(m), self.embedded) for m in m_paths]
+
+      if self.symtemplate:
+         self.result = [Ranch.extract_symmetric(B.PDBModel(m), self.symseq,
+            self.embedded) for m in m_paths]
+      else:
+         self.result = [Ranch.extract_embedded(B.PDBModel(m), self.embedded
+            ) for m in m_paths]
 
 
    def cleanup(self):

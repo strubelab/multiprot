@@ -43,7 +43,7 @@ models = call.run()		# should return a list with 10 models
 
 ## EXAMPLE 1
 
-import multiprot.new_ranch_5 as r
+import multiprot.new_ranch_6 as r
 import biskit as b
 
 dom1 = b.PDBModel('/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb')
@@ -53,7 +53,7 @@ models = call.run()
 
 ## EXAMPLE 4
 
-import multiprot.new_ranch_5 as r
+import multiprot.new_ranch_6 as r
 import biskit as b
 
 domAB1 = b.PDBModel( "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
@@ -63,7 +63,7 @@ models = call.run()
 
 ## EXAMPLE X
 
-import multiprot.new_ranch_5 as r
+import multiprot.new_ranch_6 as r
 import biskit as b
 
 domAB1 = b.PDBModel( "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
@@ -73,20 +73,19 @@ call = r.Ranch(domAB1, 'GGGGGGGGGGGGGGGGGGGG', domAB2, 'GGGGGGGGGGGGGGGGGGGG', d
 models = call.run()
 
 ## EXAMPLE 5
-## HAVE TO FIX CLEANING OF SEQUENCE POST-RUN
 
-import multiprot.new_ranch_5 as r
+import multiprot.new_ranch_6 as r
 import biskit as b
-
+ 
 domAB1 = b.PDBModel( "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
 domAB2 = domAB1.clone()
-call = r.Ranch(domAB1, 'GGGGGGGGGGGGGGGGGGGG', domAB2, chains = {domAB1:'A', domAB2: 'B'}, 
-    symmetry='p2', symtemplate=domAB2)
+call = r.Ranch(domAB1, 'GGGGGGGGGGGGGGGGGGGG', domAB2, chains = {domAB2: 'A'}, 
+    symmetry='p2', symtemplate=domAB1, overall_sym='symmetry')
 models = call.run()
 
 ## Extra
 
-import multiprot.new_ranch_5 as r
+import multiprot.new_ranch_6 as r
 import biskit as b
 
 domAB1 = b.PDBModel( "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
@@ -102,3 +101,4 @@ filenames = ['/Users/guzmanfj/Documents/Stefan/multiprot/multiprot/tests/m' + st
 
 for i in range(len(models)):
     models[i].writePdb(filenames[i])
+
