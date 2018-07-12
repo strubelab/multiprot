@@ -109,6 +109,8 @@ class Ranch( Executor ):
                         # THE HIGHER LEVEL PROGRAM MUST GIVE THE ENTIRE MODEL
                         # AS ONE OF THE FIXED DOMAINS, TO AVOID STEPS 4 AND 5
                         # IN DIAGRAM
+                        # IT ALSO HAS TO REMOVE THE BOUND DOMAINS THAT WILL BE
+                        # MODELED IN OTHER CHAINS
                         # CONTINUE IN NEW_RANCH_2 WITHOUT STEP 5
 
                         if element in self.embedded:    # 5
