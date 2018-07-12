@@ -1,19 +1,20 @@
 """
-Author: Francisco Javier Guzman
+Author: Francisco Javier Guzmán-Vega
 
-Last edited: 20/feb/18
+Wrapper for RANCH (RANdom CHain) - tool for the generation of a pool of random
+models based upon user supplied sequence and structural information
 
+https://www.embl-hamburg.de/biosaxs/eom.html
+https://www.embl-hamburg.de/biosaxs/manuals/eom.html
 
-Ranch wrapper
-
-Usage
-=====
-
->>> prot = Ranch(dom1, linker1, dom2, linker2, ..., chains = {dom1:'chainA',
-               dom2:'chainC'}, symmetry='p2', symtemplate=dom2, overall_sym='symmetry')
-
+Tria, G., Mertens, H. D. T., Kachala, M. & Svergun, D. I. (2015) Advanced 
+   ensemble modelling of flexible macromolecules using X-ray solution scattering. 
+   IUCrJ 2, 207-217
 
 """
+
+## STILL NEED TO WRITE CODE TO TEST AND HANDLE INCORRECT INPUT, AND WHAT TO DO
+## IF RANCH FAILS
 
 ## DELETE SELF. VARIABLES? (E.G. SELF.DOMS_IN)
 
@@ -29,6 +30,22 @@ import biskit.tools as t
 
 class Ranch( Executor ):
 
+   """
+   A Ranch wrapper to generate 10 independent models based on sequence and
+   protein structures in the form of PDBModels.
+
+   Usage
+   =====
+
+   >>> call = Ranch(dom1, linker1, dom2, linker2, ..., chains = {dom1:'chainA',
+                  dom2:'chainC'}, symmetry='p2', symtemplate=dom2, 
+                  overall_sym='symmetry')
+   >>> models = call.run()
+
+   The wrapper takes the sequence of domain and linker elements that will make
+   up the models and returns a list of 10 models as PDBModel objects.
+
+   """
 
    chains = {}
    pdbs_in = ()
@@ -36,11 +53,77 @@ class Ranch( Executor ):
 
 
    def __init__(self, *domains, chains={}, symmetry='p1', symtemplate=None, 
-      symunit=None, overall_sym='mixed', fixed=None, multich=None, debug=False):
+      symunit=None, overall_sym='mix', fixed=None, multich=None, **kw):
       
       """
+      Creates the variables that Ranch needs to run
       
       ## There is no need to provide chains dict entry for symtemplate
+
+      :param *domains:  Domains and linkers that will make up the chain to be 
+                        modeled, in succession
+      :type *domains:   PDBModels for structured domains and strings for the
+                        linkers, separated by commas
+      :param chains:    Specifies which chain will be taken from each domain if
+                        they have multiple chains. If this parameter is ommited
+                        the program will take the first chain by default
+      :type chains:     Dictionary with entries in the form of {domain:chain_id}
+                        where 'domain' is a PDBModel and 'chain_id' is a string
+      :param symmetry:  Specifies the type of symmetry that the model will have.
+                        E.g. 'p1' is for no symmetry, 'p2' for 'duplicate' 
+                        symemtry (dimers), 'p3' for 'triplicate' symmetry 
+                        (tetramers), etc.
+      :type symmetry:   string
+      :param symtemplate:  Specifies the domain that will be taken as symmetry
+                           core, in case of a symmetric model being created.
+                           The symtemplate has to be a symmetric molecule 
+                           itself. The number of chains in the symtemplate has 
+                           to agree with the type of symmetry chosen. E.g., if 
+                           symmetry is 'p2', symtemplate has to be a dimer. If 
+                           symmetry is 'p3', symtemplate should be a trimer, 
+                           etc.
+      :type symtemplate:   PDBModel
+      :param symunit:   Sequence of the symmetric unit (sequence that is 
+                        repeated) in the symtemplate, if it consists of multiple
+                        chains. This parameter will probably be used only by the
+                        higher level implementation of the wrapper.
+      :type symunit:    string
+      :param overall_sym:  Specifies the overall symmetry of the models 
+                           generated. 'symmetry' will generate symmetric 
+                           multichain structures only. 'asymmetry' will generate
+                           models with a symmetric core structure but leaves the
+                           remaining structure asymmetric, and 'mix' will create
+                           both symmetric and asymmetric models. This argument 
+                           is not used when the symmetry is 'p1' (no symmetry). 
+                           If symmetry is different to 'p1' and overall_sym is 
+                           not specified it defaults to 'mix'.
+      :type overall_sym:   string
+      :param fixed:  Specifies if the original coordinates are to be maintained
+                     for each of the domains (PDBModels) in the input. This 
+                     argument will only be used by the higher level 
+                     implementation of the wrapper, except in special cases when
+                     the user wishes to maintain the coordinates of a specific 
+                     domain. If more than one domain is specified as fixed, it 
+                     may cause an error if the linker length is not appropriate 
+                     to bind these domains. If no domain is specified as fixed, 
+                     ranch automatically fixes the symmetry core if present; if 
+                     not, it fixes the first domain only.
+      :type fixed:   list with values 'yes'|'no' for each PDBModel in *domains
+      :param multich:   Specifies if the domain has multiple chains for each 
+                        domain in the input. This parameter will only be used by
+                        the higher level implementation of the wrapper.
+      :type multich:    list with values 'yes'|'no' for each PDBModel in
+                        *domains
+      
+      :param kw:  additional key=value parameters are passed on to
+                  'Executor.__init__'. For example:
+                  ::
+                     debug    -  0|1, keep all temporary files (default: 0)
+                     verbose  -  0|1, print progress messages to log
+                                 (log != STDOUT)
+                     nice     -  int, nice level (default: 0)
+                     log      -  biskit.LogFile, program log (None->STOUT)
+                                 (default:None)
 
       """
 
@@ -67,7 +150,7 @@ class Ranch( Executor ):
                            # identify and locate embedded domains
 
       overall_symmetry = {
-         'mixed' : 'm',
+         'mix' : 'm',
          'symmetry' : 's',
          'asymmetry' : 'a',
       }
@@ -101,9 +184,13 @@ class Ranch( Executor ):
             # Action: take symunit from symtemplate
             self.symunit = symtemplate.takeChains([0])
 
-      self._setup()
+      try:
+         self._setup()
+      except:
+         self.cleanup()
+         raise
 
-      Executor.__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, debug=debug)
+      Executor.__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
 
 
    def _setup(self):
@@ -163,7 +250,8 @@ class Ranch( Executor ):
             else:
                # Not modeled, but paired with another domain
 
-               if isinstance(self.chains[element], (list, tuple)):   # 7
+               if element in self.chains and \
+                  isinstance(self.chains[element], (list, tuple)):   # 7
                   # if the other part of the domain is bound to the
                   # same chain, the chains entry of the domain will
                   # have a list or tuple with the chains to be taken, in order
@@ -208,10 +296,13 @@ class Ranch( Executor ):
 
                   # 9
                   # Get chain index
-                  chain_id = self.chains[element]
-                  mask_chain = element.maskFrom('chain_id', chain_id)
-                  i_mask_chain = N.nonzero(mask_chain)[0]
-                  chain_ind = element.atom2chainIndices(i_mask_chain)[0]
+                  if element in self.chains:
+                     chain_id = self.chains[element]
+                     mask_chain = element.maskFrom('chain_id', chain_id)
+                     i_mask_chain = N.nonzero(mask_chain)[0]
+                     chain_ind = element.atom2chainIndices(i_mask_chain)[0]
+                  else:
+                     chain_ind = 0
 
                   m = element.takeChains([chain_ind])
                   to_embed = Ranch.extract_fixed(m, element)
@@ -230,7 +321,8 @@ class Ranch( Executor ):
 
          i += 1
 
-      # Symseq is the sequence that will be multiplied in the symmetric structure
+      # Symseq is the sequence that will be multiplied in the symmetric 
+      # structure
       if self.symtemplate:
          self.symseq = self.sequence
 
@@ -326,7 +418,8 @@ class Ranch( Executor ):
                         in the full sequence
       :type embedded: dictionary
 
-      :return: 'full' with embedded domains concatenated at the end as independent chains
+      :return: 'full' with embedded domains concatenated at the end as 
+               independent chains
       :type return: PDBModel
       """
 
@@ -360,10 +453,10 @@ class Ranch( Executor ):
       for i in range(full.lenChains()-1):
          full.mergeChains(0)
 
-      full.renumberResidues()    # Renumber amino acids
-      full = full.concat(r)      # Combine full and r
-      full.addChainId()          # Add chain IDs with consecutive letters
-                                 # NOTE: add feature for personalized chain names
+      full.renumberResidues()   # Renumber amino acids
+      full = full.concat(r)     # Combine full and r
+      full.addChainId()         # Add chain IDs with consecutive letters
+                                # NOTE: add feature for personalized chain names
 
       # Renumber atoms
       full['serial_number'] = N0.arange(1,len(full)+1)
@@ -376,7 +469,8 @@ class Ranch( Executor ):
       Extracts one or more embedded chains from a PDBModel with a symmetric
       structure
       
-      :param full: PDBModel with symmetric structure, that contains embedded chains
+      :param full:   PDBModel with symmetric structure, that contains embedded 
+                     chains
       :type full: PDBModel
 
       :param symseq: sequence of the symmetric unit, i.e. the sequence that is
@@ -441,7 +535,9 @@ class Ranch( Executor ):
       # Generate by default 10 models, with no intensities
       self.args = self.f_seq + ' -q=10 -i'
 
-      self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, self.overall_sym)
+      if self.symtemplate:
+         self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, 
+            self.overall_sym)
 
       self.args = self.args + ' -x=%s' * len(self.pdbs_in) % tuple(self.pdbs_in)
 
@@ -508,98 +604,124 @@ class Ranch( Executor ):
 import biskit.test as BT
 
 class TestRanch(BT.BiskitTest):
-   """Test class"""
+   """
+   Test class
+   Test examples 1, 4, 5, 7, and 10 from ranch_examples/
+   
+   Runs each case separately and tests for the creation of the models list
+   with 10 PDBModels, and then for one of the models tests for number of chains,
+   length of each chain, residue numbering and serial numbering
+
+   These tests take around 35 seconds to complete, because ranch is called for
+   each example
+   """
 
    TAGS = [ BT.EXE, BT.LONG ]
 
-   ## Write tests for each case in the ranch examples folder
+   ## Write tests for cases 1, 4, 5, 7, and 10
+   dom1 = B.PDBModel(
+    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb")
+   dom2 = B.PDBModel(
+    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/Histone_H3.pdb")
+   domAB1 = B.PDBModel(
+    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
+   domAB2 = domAB1.clone()
 
-   def test_pdbmodels_saved(self):
+   def test_example1(self):
+      call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
+      models = call.run()
 
-      # Create PDBModels from pdb files
-      dom1 = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb")
-      
-      dom2 = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/Histone_H3.pdb")
-      
-      domAB1 = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
-      
-      domAB2 = domAB1.clone()
-      
-      # Call ranch for exmaple 1 in ranch_examples
-      call_example1 = Ranch(dom1, 'GGGGGGGGGG', dom2)
-      models1 = call_example1.run()
-      
-      # Call ranch for example 4 in ranch_examples
-      call_example4 = Ranch(domAB1, 'GGGGGGGGGG', domAB2, 
-         chains = {domAB1:'A', domAB2:'B'})
-      models2 = call_example4.run()
+      self.assertTrue(len(models)==10, "models does not contain 10 elements")
+      self.assertTrue(isinstance(models[0], B.PDBModel), 
+         "models contents are not PDBModels")
 
-      # example 5 in ranch_examples
-      call_example5 = Ranch(domAB1, 'GGGGGGGGGG', domAB2, 
-         chains = {domAB1:'A', domAB2:'B'}, symmetry='p2', symtemplate=domAB1)
-      models3 = call_example5.run()
+      model = models[0]
+      self.assertTrue(model.lenChains()==1, 'Incorrect number of chains')
+      self.assertTrue(len(model.sequence())==274, 'Incorrect chain length')
+      self.assertTrue(model.atoms['residue_number'][-1]==274, 
+         'Incorrect residue numbering')
+      self.assertTrue(model.atoms['serial_number'][-1]==2181, 
+         'Incorrect serial numbering')
 
-      # models lists contain 10 elements
-      self.assertTrue(len(models1)==10, "models1 does not contain 10 elements")
-      self.assertTrue(len(models2)==10, "models2 does not contain 10 elements")
-      self.assertTrue(len(models3)==10, "models3 does not contain 10 elements")
-      
-      # elements of models lists are PDBModels
-      self.assertTrue(isinstance(models1[0], B.PDBModel), 
-         "models1 contents are not PDBModels")
-      self.assertTrue(isinstance(models2[0], B.PDBModel), 
-         "models2 contents are not PDBModels")
-      self.assertTrue(isinstance(models3[0], B.PDBModel), 
-         "models1 contents are not PDBModels")
+   def test_example4(self):
+      call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
+         chains = {self.domAB1:'A', self.domAB2: 'B'})
+      models = call.run()
 
+      self.assertTrue(len(models)==10, "models does not contain 10 elements")
+      self.assertTrue(isinstance(models[0], B.PDBModel), 
+         "models contents are not PDBModels")
 
+      model = models[0]
+      self.assertTrue(model.lenChains()==3, 'Incorrect number of chains')
+      self.assertTrue(len(model.takeChains([0]).sequence())==456 and \
+         len(model.takeChains([1]).sequence())==218 and \
+         len(model.takeChains([2]).sequence())==218, 'Incorrect chain length')
+      self.assertTrue(model.takeChains([0]).atoms['residue_number'][-1]==456 \
+         and model.takeChains([1]).atoms['residue_number'][-1]==218 \
+         and model.takeChains([2]).atoms['residue_number'][-1]==218, 
+         'Incorrect residue numbering')
+      self.assertTrue(model.atoms['serial_number'][-1]==7163, 
+         'Incorrect serial numbering')
 
-class TestCleaning(BT.BiskitTest):
-   """ Test class for the cleaning methods post-run """
+   def test_example5(self):
+      call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
+         chains = {self.domAB2: 'A'}, symmetry='p2', symtemplate=self.domAB1, 
+         overall_sym='symmetry')
+      models = call.run()
 
-   trimer = B.PDBModel(
-      '/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/trimer_multich/2ei4.pdb')
-   chain = trimer.takeChains([1])
-   domAB = B.PDBModel(
-      "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
+      self.assertTrue(len(models)==10, "models does not contain 10 elements")
+      self.assertTrue(isinstance(models[0], B.PDBModel), 
+         "models contents are not PDBModels")
 
+      model = models[0]
+      self.assertTrue(model.lenChains()==4, 'Incorrect number of chains')
+      self.assertTrue(len(model.takeChains([0]).sequence())==456 and \
+         len(model.takeChains([1]).sequence())==218 and \
+         len(model.takeChains([2]).sequence())==456 and \
+         len(model.takeChains([3]).sequence())==218, 'Incorrect chain length')
+      self.assertTrue(model.takeChains([0]).atoms['residue_number'][-1]==456 \
+         and model.takeChains([1]).atoms['residue_number'][-1]==218 \
+         and model.takeChains([2]).atoms['residue_number'][-1]==456 \
+         and model.takeChains([3]).atoms['residue_number'][-1]==218, 
+         'Incorrect residue numbering')
+      self.assertTrue(model.atoms['serial_number'][-1]==10754, 
+         'Incorrect serial numbering')
 
-   def test_extract_fixed(self):
-      """
-      Test extract_fixed() method, extracting a single chain from the
-      """
+   def test_example7(self):
+      linker = 'GGGGGGGGGGGGGGGGGGGG'
+      call = Ranch(self.dom2, linker, self.domAB1, linker, self.dom2, 
+         symmetry='p2', symtemplate=self.domAB1, overall_sym='mix')
+      models = call.run()
 
-      # Extract single chain from trimer
-      ext_test = Ranch.extract_fixed(self.chain,self.trimer)
-      ext = self.trimer.takeChains([0,2])
-      
-      self.assertTrue(N.all(ext.xyz == ext_test.xyz))
+      model = models[0]
+      self.assertTrue(model.lenChains()==2, 'Incorrect number of chains')
+      self.assertTrue(len(model.takeChains([0]).sequence())==454 and \
+         len(model.takeChains([0]).sequence())==454, 'Incorrect chain length')
+      self.assertTrue(model.takeChains([0]).atoms['residue_number'][-1]==454 \
+         and model.takeChains([1]).atoms['residue_number'][-1]==454, 
+         'Incorrect residue numbering')
+      self.assertTrue(model.atoms['serial_number'][-1]==6876, 
+         'Incorrect serial numbering')
 
-   def test_extract_embedded(self):
-      embedded = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4.1/models/00001eom.pdb")
+   def test_example10(self):
+      call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
+         'GGGGGGGGGGGGGGGGGGGG', self.domAB2, chains = {self.domAB2:'B'})
+      models = call.run()
 
-      chainA = self.domAB.takeChains([0])
-      embdict = {chainA:2, chainA:478}
-
-      ext = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4.1/models/00001eom_mod_fixed.pdb")
-
-      ext_test = Ranch.extract_embedded(embedded, embdict)
-
-      self.assertTrue(N.all(ext.xyz == ext_test.xyz))
-
-   def test_embed(self):
-
-      emb = B.PDBModel(
-         "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4.1/domA_mod.pdb")
-
-      emb_test = Ranch.embed(self.domAB.takeChains([0]), self.domAB.takeChains([1]))
-
-      self.assertTrue(N.all(self.emb.xyz == emb_test.xyz))
+      model = models[0]
+      self.assertTrue(model.lenChains()==4, 'Incorrect number of chains')
+      self.assertTrue(len(model.takeChains([0]).sequence())==694 and \
+         len(model.takeChains([1]).sequence())==218 and \
+         len(model.takeChains([2]).sequence())==218 and \
+         len(model.takeChains([3]).sequence())==218, 'Incorrect chain length')
+      self.assertTrue(model.takeChains([0]).atoms['residue_number'][-1]==694 \
+         and model.takeChains([1]).atoms['residue_number'][-1]==218 \
+         and model.takeChains([2]).atoms['residue_number'][-1]==218 \
+         and model.takeChains([3]).atoms['residue_number'][-1]==218, 
+         'Incorrect residue numbering')
+      self.assertTrue(model.atoms['serial_number'][-1]==10754, 
+         'Incorrect serial numbering')
 
 
 if __name__ == '__main__':
