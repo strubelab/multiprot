@@ -202,7 +202,7 @@ class Ranch( Executor ):
       
       ######## DIAGRAM STARTS ########
 
-      ## The numbers are a reference to the steps in multiprot/doc
+      ## NOTE: The numbers are references to the steps in DIAGRAM.png
 
       i = 0   # Counter for domain position
       for element in self.domains:
