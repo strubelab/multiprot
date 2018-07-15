@@ -47,10 +47,6 @@ class Ranch( Executor ):
 
    """
 
-   chains = {}
-   pdbs_in = ()
-   sequence = ''
-
 
    def __init__(self, *domains, chains={}, symmetry='p1', symtemplate=None, 
       symunit=None, overall_sym='mix', fixed=None, multich=None, **kw):
@@ -127,7 +123,7 @@ class Ranch( Executor ):
 
       """
 
-      # Raise exception if symmetry is different than p1 and symtemplate is 
+      # TODO: Raise exception if symmetry is different than p1 and symtemplate is 
       # None, and if symtemplate is not in domains
       
       # Create temporary folder for pdbs and sequence
