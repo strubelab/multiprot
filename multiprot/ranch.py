@@ -125,6 +125,8 @@ class Ranch( Executor ):
 
       # TODO: Raise exception if symmetry is different than p1 and symtemplate is 
       # None, and if symtemplate is not in domains
+
+      #TODO: Add possibility to input more options for ranch
       
       # Create temporary folder for pdbs and sequence
       tempdir = tempfile.mkdtemp( '', self.__class__.__name__.lower() + '_', 
