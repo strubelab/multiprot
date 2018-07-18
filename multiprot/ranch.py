@@ -49,7 +49,7 @@ class Ranch( Executor ):
 
 
    def __init__(self, *domains, chains={}, symmetry='p1', symtemplate=None, 
-      symunit=None, overall_sym='mix', fixed=None, multich=None, **kw):
+      symunit=None, overall_sym='mix', fixed=[], multich=None, **kw):
       
       """
       Creates the variables that Ranch needs to run
@@ -95,7 +95,7 @@ class Ranch( Executor ):
                            not specified it defaults to 'mix'.
       :type overall_sym:   string
       :param fixed:  Specifies if the original coordinates are to be maintained
-                     for each of the domains (PDBModels) in the input. This 
+                     for one or more domains (PDBModels) in the input. This 
                      argument will only be used by the higher level 
                      implementation of the wrapper, except in special cases when
                      the user wishes to maintain the coordinates of a specific 
@@ -104,12 +104,14 @@ class Ranch( Executor ):
                      to bind these domains. If no domain is specified as fixed, 
                      ranch automatically fixes the symmetry core if present; if 
                      not, it fixes the first domain only.
-      :type fixed:   list with values 'yes'|'no' for each PDBModel in *domains
+      :type fixed:   List with the domains (PDBModels) to be maintained as fixed
       :param multich:   Specifies if the domain has multiple chains for each 
                         domain in the input. This parameter will only be used by
                         the higher level implementation of the wrapper.
       :type multich:    list with values 'yes'|'no' for each PDBModel in
                         *domains
+                        ### PROBABLY A REDUNDANT ARGUMENT, AS THE MULTICH DOMAIN
+                        IS ALWAYS THE SYMTEMPLATE ONLY (I THINK)
       
       :param kw:  additional key=value parameters are passed on to
                   'Executor.__init__'. For example:
@@ -123,7 +125,7 @@ class Ranch( Executor ):
 
       """
 
-      # TODO: Raise exception if symmetry is different than p1 and symtemplate is 
+      # TODO: Raise exception if symmetry is not p1 and symtemplate is 
       # None, and if symtemplate is not in domains
 
       #TODO: Add possibility to input more options for ranch
@@ -155,12 +157,12 @@ class Ranch( Executor ):
 
       self.overall_sym = overall_symmetry[overall_sym]
 
-      if fixed:
-         self.fixed = fixed
-      else:
-         self.fixed = []
-         for element in self.domains:
-            if isinstance(element, B.PDBModel):
+      self.fixed = []
+      for element in self.domains:
+         if isinstance(element, B.PDBModel):
+            if element in fixed:
+               self.fixed.append('yes')
+            else:
                self.fixed.append('no')
 
       if multich:
