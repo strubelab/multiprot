@@ -1,5 +1,5 @@
 #RG: please convert to 4-space indentation (e.g. WingIDE can do it automatically)
-
+#RG: remove non-ascii characters otherwise we need to specify encoding
 """
 Author: Francisco Javier Guzmán-Vega
 
@@ -300,7 +300,7 @@ class Ranch( Executor ):
 
                   break
 
-               else: 
+               else: #RG: mhm... what is this embedding thing about?
                   # Only one domain from element is part of the chain
                   # Action: Embed the paired domains into the selected chain
 
@@ -629,6 +629,9 @@ class TestRanch(BT.BiskitTest):
 
    TAGS = [ BT.EXE, BT.LONG ]
 
+   #RG: I know this is convenient but very bad idea to execute any code in the class definition body
+   #RG: problem 1: this will need to be executed whenever the module is loaded (not just for testing)
+   #RG: problem 2: this will break on any other computer except your own (paths :) )
    ## Write tests for cases 1, 4, 5, 7, and 10
    dom1 = B.PDBModel(
     "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb")
@@ -637,6 +640,15 @@ class TestRanch(BT.BiskitTest):
    domAB1 = B.PDBModel(
     "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
    domAB2 = domAB1.clone()
+
+   #RG: one pattern that should work instead:
+   DOM1 = None ## define empty class variable
+   DOM2 = None
+
+   def setup(self):
+       self.DOM1 = DOM1 or B.PDBModel( t.testRoot('ranch/1/2z6o_mod.pdb') )
+       self.DOM2 = DOM2 or B.PDBModel( t.testRoot('ranch/1/Histone_H3.pdb') )
+       ## this will load the PDBs only once even though setup is run for every test
 
    def test_example1(self):
       call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
