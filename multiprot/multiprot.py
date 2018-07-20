@@ -3,13 +3,17 @@ Script that contains the higher level implementation of the ranch wrapper
 
 """
 
+#RG: I think this should also be a class with methods, defaults and all
+#RG: the actual script should then be very small and only deal with command line parsing and argument cleanup
+
 import argparse
 import biskit as b
 import random
 import ranch as r
 
 # If type=divide does not work, try action='append_const'
-def divide(string):
+#RG: no big deal but instead of `string`, which looks like a type definition, convention is `s`
+def divide(string):  
    return tuple(string.split(':'))
    # if the string is not properly formatted
    # raise argparse.ArgumentTypeError(msg)
