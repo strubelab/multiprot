@@ -43,6 +43,7 @@ parsero.add_argument('--symtemplate', '-t', default=[], action='append'
    help='Which domain will be the symmetry core, in case of symmetry other\
    than p1 specified')
 
+## Check the options, because ranch wrapper only supports full words right now
 parsero.add_argument('--overall_sym', '-o', default='mix', 
    choices=['mixed', 'm', 'symmetry', 's', 'asymmetry', 'a'], 
    help='Specify the overall symmetry of the molecules to be produced, i.e. \
@@ -63,22 +64,26 @@ args = parsero.parse_args()
 
 ## Create PDBModels
 
-chains = []
+chains = []    # Arguments for ranch for each chain
+multidom = []  # List of tuples [('1234.pdb', 'A'), ... ] for each chain
+               # for all the multichain domains with chains specified
 
 for i in range(len(args.chain)):    # For each chain
    rdomains = []
    rchains = {}
    rfixed = []
    rsymtemp = None
+   rmulti = []
 
    for j in range(len(args.chain[i])):    # For each component of the chain
       if args.chain[i][j][0][-4:]=='.pdb':
          pdb = b.PDBModel(args.chain[i][j][0])
-            if len(args.chain[i][j])==2:
+            if len(args.chain[i][j])==2:  # If chain to be taken is specified
                rchains[pdb] = args.chain[i][j][1]
-            if args.chain[i][j][0] in args.fixed:
+               rmulti.append((args.chain[i][j][0], args.chain[i][j][1]))
+            if args.chain[i][j][0] in args.fixed:  # If domain will be fixed
                rfixed.append(pdb)
-            if args.chain[i][j][0] in args.symtemplate:
+            if args.chain[i][j][0] in args.symtemplate:  # If is symtemplate
                rsymtemp = pdb    # THERE CAN ONLY BE ONE
 
          rdomains.append(pdb)
@@ -86,14 +91,44 @@ for i in range(len(args.chain)):    # For each chain
       rdomains.append(args.chain[i][j][0])
 
    # chains[i] = (domains/linkers, chains dict, symtemplate, already modeled)
-   chains.append((rdomains, rchains, rfixed, rsymtemp, False))
+   # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for each domain with
+   # a chain specified
+   chains.append((rdomains, rchains, rfixed, rsymtemp, False, rmulti))
+   multidom.append(rmulti)
 
 random.shuffle(chains)
 
-for chain in chains:
-   if chain[2] == False:
-      call = r.Ranch(*chain[0], chains=chain[1], symmetry=args.symmetry, 
-         symtemplate=args.symtemplate, overall_sym=args.overall_sym,)
+for i in range(len(chains)):
+   if chains[i][4] == False:   # If it is still not modeled
+      call = r.Ranch(*chains[i][0], chains=chains[i][1], symmetry=args.symmetry, 
+         fixed = chains[i][2], symtemplate = chains[i][3], 
+         overall_sym=args.overall_sym)
+      models = call.run()
+      chains[i][4] = True
+      
+      ## QUESTION: TAKE ONE OR TEN MODELS FOR NEXT STEP?
+
+   # Search every ('file.pdb', 'chainID') pair in other chains of chain[x][5] to 
+   # see if the same multichain pdb in chain i is used in another chain j
+   for pdb, chainID in chains[i][5]:
+      # For each pair of ('file.pdb', 'chainID') in present chain
+      
+      for j in range(i+1, len(chains)):
+         # For each of the remaining chains in 'chains'
+         
+         for _pdb, _chainID in chains[j][5]:
+            # For each ('file.pdb', 'chainID') pair in chain j[5]
+            
+            if pdb == _pdb:
+               # The same pdb is used, probably with a different chain
+               # Now what
+               # I'll tell  you what
+               # Extract the chain with new coordinates, embed chains[i],
+               # EXCEPT parts that are in chains[j] bound to chains[i],
+               # those will be taken from chains[i] and passed to ranch to
+               # be modeled as individual fixed domains in chains[j]
+
+
 
 
 
