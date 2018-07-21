@@ -1,3 +1,5 @@
+#RG: please convert to 4-space indentation (e.g. WingIDE can do it automatically)
+#RG: remove non-ascii characters otherwise we need to specify encoding
 """
 Author: Francisco Javier Guzmán-Vega
 
@@ -23,10 +25,10 @@ import numpy as N
 import tempfile, os
 import re
 from operator import itemgetter
-from biskit.core import oldnumeric as N0
+from biskit.core import oldnumeric as N0  #RG: oldNumeric is a clutch for old code, replace by numpy calls
 
 from biskit.exe.executor import Executor
-import biskit.tools as t
+import biskit.tools as t #RG: I prefer uppercase (T) to distinguish variables and modules
 
 class Ranch( Executor ):
 
@@ -108,7 +110,7 @@ class Ranch( Executor ):
       :param multich:   Specifies if the domain has multiple chains for each 
                         domain in the input. This parameter will only be used by
                         the higher level implementation of the wrapper.
-      :type multich:    list with values 'yes'|'no' for each PDBModel in
+      :type multich:    list with values 'yes'|'no' for each PDBModel in   #RG: use python bool True/False!
                         *domains
                         ### PROBABLY A REDUNDANT ARGUMENT, AS THE MULTICH DOMAIN
                         IS ALWAYS THE SYMTEMPLATE ONLY (I THINK)
@@ -131,13 +133,14 @@ class Ranch( Executor ):
       #TODO: Add possibility to input more options for ranch
       
       # Create temporary folder for pdbs and sequence
+      #RG: Executor can do that for you if you set `tempdir` parameter to True or to a custom name
       tempdir = tempfile.mkdtemp( '', self.__class__.__name__.lower() + '_', 
          t.tempDir() )
 
       # Create temporary folder for models
       self.dir_models = tempfile.mkdtemp( '', 'models_', tempdir )
 
-      self.f_seq = tempdir + '/sequence.seq'
+      self.f_seq = tempdir + '/sequence.seq'  #RG: preferred (cross-platform): os.path.join(tempdir, 'sequence.seq') 
 
       self.domains = domains
       self.chains = chains
@@ -149,7 +152,7 @@ class Ranch( Executor ):
       self.embedded = {}   # dictionary with domain : residue number to
                            # identify and locate embedded domains
 
-      overall_symmetry = {
+      overall_symmetry = {  #RG: then ask the programmer to directly provide the correct code, is shorter too :)
          'mix' : 'm',
          'symmetry' : 's',
          'asymmetry' : 'a',
@@ -165,10 +168,16 @@ class Ranch( Executor ):
             else:
                self.fixed.append('no')
 
+      #RG: list comprehension should work instead of the complex loop (not tested)
+      self.fixed = [ element in fixed for element in self.domains if isinstance(element, B.PDBModel) ]
+
+      #RG: replace next if/else statement: self.multich = multich or []
       if multich:
          self.multich = multich
       else:
          self.multich = []
+
+         #RG: self.multich = [ element is self.symtemplate for element in self.domains if isinstance... ]
          for element in self.domains:
             if isinstance(element, B.PDBModel):
                if element == self.symtemplate:     # optimize?
@@ -184,6 +193,7 @@ class Ranch( Executor ):
             # Action: take symunit from symtemplate
             self.symunit = symtemplate.takeChains([0])
 
+      #RG: better call from prepare() instead of creating new block here
       try:
          self._setup()
       except:
@@ -210,7 +220,7 @@ class Ranch( Executor ):
          if isinstance(element, str):    # 1
             # If is sequence, add to sequence and continue
             self.sequence += element
-            continue
+            continue      #RG: continue and break are, if at all possible, not supposed to be used in good code :)
 
          elif isinstance(element, B.PDBModel):
             # if is PDBModel
@@ -290,7 +300,7 @@ class Ranch( Executor ):
 
                   break
 
-               else: 
+               else: #RG: mhm... what is this embedding thing about?
                   # Only one domain from element is part of the chain
                   # Action: Embed the paired domains into the selected chain
 
@@ -315,7 +325,7 @@ class Ranch( Executor ):
 
       ####### DIAGRAM FINISHES... REACHED STEP 9 #########
 
-         else:
+         else:  #RG: I think it's considered better to raise your own custom errors rather than python built-in
             raise TypeError(
                'The *domains arguments must be either strings or PDBModels.')
 
@@ -329,7 +339,7 @@ class Ranch( Executor ):
       return None
 
 
-   @classmethod
+   @classmethod  #RG: wouldn't it be more logical to simply provide this as a tool function outside the class?
    def embed(cls, dom, to_embed):
       '''
       Embeds one model (int_dom - possibly with multiple chains) into another 
@@ -349,7 +359,7 @@ class Ranch( Executor ):
       return first.concat(to_embed,last)
       
 
-   ## Make class method?
+   ## Make class method?  #RG: if you never use the class argument, the method could be moved outside the class
    @classmethod
    def extract_fixed(cls, dom, full):
       """
@@ -519,8 +529,8 @@ class Ranch( Executor ):
 
       # Write pdb files
       for i in range(len(self.doms_in)):
-         pdb_name = self.tempdir + '/' + str(i) + '_'
-         if self.doms_in[i].validSource() == None:
+         pdb_name = self.tempdir + '/' + str(i) + '_'  #RG: see os.path.join comment in __init__
+         if self.doms_in[i].validSource() == None:     #RG: slightly faster: ...validSource() is None
             pdb_name += '.pdb'
          else:
             pdb_name += self.doms_in[i].sourceFile()[-8:]
@@ -533,7 +543,7 @@ class Ranch( Executor ):
          f.write(self.sequence)
 
       # Generate by default 10 models, with no intensities
-      self.args = self.f_seq + ' -q=10 -i'
+      self.args = self.f_seq + ' -q=10 -i'   #RG: make this another __init__ parameter!
 
       if self.symtemplate:
          self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, 
@@ -594,6 +604,7 @@ class Ranch( Executor ):
          t.tryRemove(self.tempdir, tree=True)
 
       super().cleanup() # I think this ultimately does the same as previous line
+      #RG: Yep, default cleanup is taking care of this (and only removes if the folder is new)
 
 
 
@@ -618,6 +629,9 @@ class TestRanch(BT.BiskitTest):
 
    TAGS = [ BT.EXE, BT.LONG ]
 
+   #RG: I know this is convenient but very bad idea to execute any code in the class definition body
+   #RG: problem 1: this will need to be executed whenever the module is loaded (not just for testing)
+   #RG: problem 2: this will break on any other computer except your own (paths :) )
    ## Write tests for cases 1, 4, 5, 7, and 10
    dom1 = B.PDBModel(
     "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb")
@@ -626,6 +640,15 @@ class TestRanch(BT.BiskitTest):
    domAB1 = B.PDBModel(
     "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
    domAB2 = domAB1.clone()
+
+   #RG: one pattern that should work instead:
+   DOM1 = None ## define empty class variable
+   DOM2 = None
+
+   def setup(self):
+       self.DOM1 = DOM1 or B.PDBModel( t.testRoot('ranch/1/2z6o_mod.pdb') )
+       self.DOM2 = DOM2 or B.PDBModel( t.testRoot('ranch/1/Histone_H3.pdb') )
+       ## this will load the PDBs only once even though setup is run for every test
 
    def test_example1(self):
       call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
