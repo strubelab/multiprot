@@ -1,7 +1,7 @@
 #RG: please convert to 4-space indentation (e.g. WingIDE can do it automatically)
 #RG: remove non-ascii characters otherwise we need to specify encoding
 """
-Author: Francisco Javier Guzmán-Vega
+Author: Francisco Javier Guzman-Vega
 
 Wrapper for RANCH (RANdom CHain) - tool for the generation of a pool of random
 models based upon user supplied sequence and structural information
@@ -25,12 +25,192 @@ import numpy as N
 import tempfile, os
 import re
 from operator import itemgetter
-from biskit.core import oldnumeric as N0  #RG: oldNumeric is a clutch for old code, replace by numpy calls
-
+from errors import *
 from biskit.exe.executor import Executor
-import biskit.tools as t #RG: I prefer uppercase (T) to distinguish variables and modules
+import biskit.tools as T #RG: I prefer uppercase (T) to distinguish variables and modules (SOLVED)
 
-class Ranch( Executor ):
+
+#### Helper tool misc functions ####
+
+def embed(dom, to_embed):
+   '''
+   Embeds one model (int_dom - possibly with multiple chains) into another 
+   (dom) to trick ranch to treat them as a simple single-chain domain
+
+   :param dom: model of a single chain domain that will contain the
+               other model
+   :type dom: PDBModel
+   :param int_dom: model of a single or multiple chain domain that will be 
+                embedded into 'dom'
+   :type int_dom: PDBModel
+   '''
+
+   first = dom.take(dom.res2atomIndices([0,1]))
+   last = dom.take(dom.res2atomIndices(list(range(2,dom.lenResidues()))))
+
+   return first.concat(to_embed,last)
+
+
+def extract_fixed(dom, full):
+   """
+   Extracts one model from another
+   Finds the position of 'dom' inside 'full' comparing the sequence and atom
+   coordinates for each chain in dom, gets the chain index and takes all the
+   chains but the ones selected.
+   
+   :param dom: model of a single or multiple chain domain
+   :type dom: PDBModel
+   :param full: model of a multiple chain domain that contains 'dom'
+   :type full: PDBModel
+
+   :return: model 'full' without dom
+   :type return: PDBModel
+   """
+
+   chains_to_take = list(range(full.lenChains()))
+
+   # Make a list with one PDBModel for each chain in dom
+   # This is to find one chain from dom at a time, in case they are not
+   # together in 'full' ... is this even necessary?
+   doms = [dom.takeChains([i]) for i in range(dom.lenChains())]
+
+   for m in doms:
+
+      start = m.sequence()[:10]  # could use the entire sequence instead
+      
+      if re.search(start, full.sequence()):
+         # If the m sequence is inside full sequence
+         # Action: look for the position of m inside full, and extract
+
+         matches = re.finditer(start, full.sequence())
+         first_res_m = m.res2atomIndices([0])
+         lowm = first_res_m[0]
+         highm = first_res_m[-1]
+         
+         for match in matches:
+            index = match.start()
+            first_res_full = full.res2atomIndices([index])
+
+            lowfull = first_res_full[0]
+            highfull = first_res_full[-1]
+
+            if N.all(m.xyz[lowm:highm+1] == full.xyz[lowfull:highfull+1]):
+               # If the atoms for the first residue are in the same positions
+               # Action: remove chain index from chains_to_take
+               chain_ind = full.atom2chainIndices(first_res_full)
+               chains_to_take.remove(chain_ind[0])
+               break
+
+   full = full.takeChains(chains_to_take)
+
+   return full
+
+
+def extract_embedded(full, embedded):
+   """
+   Extracts one  or more PDBModels from another
+   Finds the sequence and location of each domain in embedded dictionary.
+   Extracts the atoms and concatenates at the end of 'self'. 
+   Renumbers amino acids, id number and renames chains in the process.
+   
+   :param embedded: dictionary with embedded domains and its position (index)
+                     in the full sequence
+   :type embedded: dictionary
+
+   :return: 'full' with embedded domains concatenated at the end as 
+            independent chains
+   :type return: PDBModel
+   """
+
+   ## For the higher level program, add an argument to provide the dictionary
+
+   chains_to_take = list(range(full.lenChains()))
+
+   r = B.PDBModel()
+   emb_ind = []   # List for start and end indexes for each embedded domain
+
+   for dom, i_start in embedded.items():
+      
+      i_end = i_start + len(dom.sequence())
+
+      if full.sequence()[i_start:i_end] == dom.sequence():
+         r = r.concat(full.takeResidues(list(range(i_start, i_end))))
+         emb_ind.append((i_start, i_end))
+      else:
+         raise MatchError('The sequence from the domain to exctract does not \
+            match the sequence in the full domain with the specified indices')
+
+   # Sort the list to remove the atoms from highest to lowest index,
+   # so the indexes won't be affected
+   emb_ind = sorted(emb_ind, key=itemgetter(0), reverse=True)
+
+   for i_start, i_end in emb_ind:
+      atomi_start = full.resIndex()[i_start]
+      atomi_end = full.resIndex()[i_end]
+      full.remove(list(range(atomi_start, atomi_end)))
+
+   # Concat the original chain that previously contained the embedded domains
+   for i in range(full.lenChains()-1):
+      full.mergeChains(0)
+
+   full.renumberResidues()   # Renumber amino acids
+   full = full.concat(r)     # Combine full and r
+   full.addChainId()         # Add chain IDs with consecutive letters
+                             # NOTE: add feature for personalized chain names
+
+   # Renumber atoms
+   full['serial_number'] = N.arange(1,len(full)+1)
+
+   return full
+
+
+def extract_symmetric(full, symseq, embedded):
+   """
+   Extracts one or more embedded chains from a PDBModel with a symmetric
+   structure
+   
+   :param full:   PDBModel with symmetric structure, that contains embedded 
+                  chains
+   :type full: PDBModel
+
+   :param symseq: sequence of the symmetric unit, i.e. the sequence that is
+                  multiplied in the symmetric structure
+   :type symseq: string
+   :param embedded: dictionary with embedded domains and its position (index)
+                     in the sequence of 'full'
+   :type embedded: dictionary
+   :return: 'full' with embedded domains concatenated at the end for each
+            symmetric unit
+   :type full: PDBModel
+   """
+   
+   symunits = []
+
+   if re.search(symseq, full.sequence()):
+
+      matches = re.finditer(symseq, full.sequence())
+
+      for match in matches:
+         istart, iend = match.span()
+         symunit = full.takeResidues(list(range(istart, iend)))
+         # Extract embedded domains one symunit at a time
+         symunits.append(extract_embedded(symunit, embedded))
+
+      r = symunits[0]
+
+      for i in range(1,len(symunits)):
+         r = r.concat(symunits[i])
+
+      r.addChainId()
+      r['serial_number'] = N.arange(1,len(r)+1)
+
+   else:
+      raise MatchError("Symseq could not be found inside the full domain")
+
+   return r
+
+
+class Ranch(Executor):
 
    """
    A Ranch wrapper to generate 10 independent models based on sequence and
@@ -51,7 +231,7 @@ class Ranch( Executor ):
 
 
    def __init__(self, *domains, chains={}, symmetry='p1', symtemplate=None, 
-      symunit=None, overall_sym='mix', fixed=[], multich=None, **kw):
+      symunit=None, overall_sym='m', fixed=[], n=10, **kw):
       
       """
       Creates the variables that Ranch needs to run
@@ -107,14 +287,9 @@ class Ranch( Executor ):
                      ranch automatically fixes the symmetry core if present; if 
                      not, it fixes the first domain only.
       :type fixed:   List with the domains (PDBModels) to be maintained as fixed
-      :param multich:   Specifies if the domain has multiple chains for each 
-                        domain in the input. This parameter will only be used by
-                        the higher level implementation of the wrapper.
-      :type multich:    list with values 'yes'|'no' for each PDBModel in   #RG: use python bool True/False!
-                        *domains
-                        ### PROBABLY A REDUNDANT ARGUMENT, AS THE MULTICH DOMAIN
-                        IS ALWAYS THE SYMTEMPLATE ONLY (I THINK)
-      
+      :param n:   Number of models to be generated (let's say from 10 to 15,000,
+                  though I'm not sure about the actual maximum for ranch)
+      :type n:    Integer
       :param kw:  additional key=value parameters are passed on to
                   'Executor.__init__'. For example:
                   ::
@@ -134,14 +309,18 @@ class Ranch( Executor ):
       
       # Create temporary folder for pdbs and sequence
       #RG: Executor can do that for you if you set `tempdir` parameter to True or to a custom name
+      #JG:  I needed to create this before calling Executor.__init__(...) to make 
+      #     another folder inside (line 318)
       tempdir = tempfile.mkdtemp( '', self.__class__.__name__.lower() + '_', 
-         t.tempDir() )
+         T.tempDir() )
 
       # Create temporary folder for models
       self.dir_models = tempfile.mkdtemp( '', 'models_', tempdir )
 
-      self.f_seq = tempdir + '/sequence.seq'  #RG: preferred (cross-platform): os.path.join(tempdir, 'sequence.seq') 
+      #RG: preferred (cross-platform): os.path.join(tempdir, 'sequence.seq') (SOLVED)
+      self.f_seq = os.path.join(tempdir, 'sequence.seq')
 
+      self.n = n
       self.domains = domains
       self.chains = chains
       self.sequence = ''
@@ -152,38 +331,19 @@ class Ranch( Executor ):
       self.embedded = {}   # dictionary with domain : residue number to
                            # identify and locate embedded domains
 
-      overall_symmetry = {  #RG: then ask the programmer to directly provide the correct code, is shorter too :)
-         'mix' : 'm',
-         'symmetry' : 's',
-         'asymmetry' : 'a',
-      }
-
-      self.overall_sym = overall_symmetry[overall_sym]
-
-      self.fixed = []
-      for element in self.domains:
-         if isinstance(element, B.PDBModel):
-            if element in fixed:
-               self.fixed.append('yes')
-            else:
-               self.fixed.append('no')
+      self.overall_sym = overall_sym
 
       #RG: list comprehension should work instead of the complex loop (not tested)
-      self.fixed = [ element in fixed for element in self.domains if isinstance(element, B.PDBModel) ]
+      #JG:  good idea, modified it a bit because the list still needs to contain
+      #     'yes' or 'no' values to be pasted into the args string for ranch
+      
+      # self.fixed = [ element in fixed for element in self.domains if isinstance(element, B.PDBModel) ]
 
-      #RG: replace next if/else statement: self.multich = multich or []
-      if multich:
-         self.multich = multich
-      else:
-         self.multich = []
+      self.fixed = ['yes' if element in fixed else 'no' for element in \
+                     self.domains if isinstance(element, B.PDBModel)]
 
-         #RG: self.multich = [ element is self.symtemplate for element in self.domains if isinstance... ]
-         for element in self.domains:
-            if isinstance(element, B.PDBModel):
-               if element == self.symtemplate:     # optimize?
-                  self.multich.append('yes')
-               else:
-                  self.multich.append('no')
+      self.multich = ['yes' if element is self.symtemplate else 'no' for \
+                        element in self.domains if isinstance(element, B.PDBModel)]
 
       if symtemplate:
          if symunit:
@@ -193,15 +353,30 @@ class Ranch( Executor ):
             # Action: take symunit from symtemplate
             self.symunit = symtemplate.takeChains([0])
 
-      #RG: better call from prepare() instead of creating new block here
-      try:
-         self._setup()
-      except:
-         self.cleanup()
-         raise
+
+      # using this command
+      # super().__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
+      # creates the following error in all tests, I don't know why
+
+      # ======================================================================
+      # ERROR: test_example1 (__main__.TestRanch)
+      # ----------------------------------------------------------------------
+      # Traceback (most recent call last):
+      #   File "ranch.py", line 875, in test_example1
+      #     call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
+      #   File "ranch.py", line 401, in __init__
+      #     super().__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
+      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/executor.py", line 312, in __init__
+      #     self.exe = ExeConfigCache.get( name, strict=strict )
+      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/exeConfigCache.py", line 76, in get
+      #     ExeConfigCache.CACHE[ name ] = ExeConfig( name, **kw )
+      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/exeConfig.py", line 147, in __init__
+      #     % (self.dat, self.name))
+      # biskit.exe.exeConfig.ExeConfigError: Could not find configuration file /Users/guzmanfj/Documents/Stefan/biskit3/biskit/data/defaults/exe_<__main__.Ranch object at 0x1043ca668>.dat for program <__main__.Ranch object at 0x1043ca668>.
+
+      # Will look into it later maybe.. the command below works fine
 
       Executor.__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
-
 
    def _setup(self):
       """
@@ -290,8 +465,8 @@ class Ranch( Executor ):
                   chain_ind = element.atom2chainIndices(i_mask_chain)[0]
 
                   m = element.takeChains([chain_ind])
-                  to_embed = Ranch.extract_fixed(m, element)
-                  m_emb = Ranch.embed(m, to_embed)
+                  to_embed = extract_fixed(m, element)
+                  m_emb = embed(m, to_embed)
 
                   self.embedded[to_embed] = len(self.sequence) + 2
 
@@ -300,7 +475,7 @@ class Ranch( Executor ):
 
                   break
 
-               else: #RG: mhm... what is this embedding thing about?
+               else: #RG: mhm... what is this embedding thing about? ... MAGIC
                   # Only one domain from element is part of the chain
                   # Action: Embed the paired domains into the selected chain
 
@@ -315,8 +490,8 @@ class Ranch( Executor ):
                      chain_ind = 0
 
                   m = element.takeChains([chain_ind])
-                  to_embed = Ranch.extract_fixed(m, element)
-                  m_emb = Ranch.embed(m, to_embed)
+                  to_embed = extract_fixed(m, element)
+                  m_emb = embed(m, to_embed)
                   
                   self.embedded[to_embed] = len(self.sequence) + 2
 
@@ -325,8 +500,9 @@ class Ranch( Executor ):
 
       ####### DIAGRAM FINISHES... REACHED STEP 9 #########
 
-         else:  #RG: I think it's considered better to raise your own custom errors rather than python built-in
-            raise TypeError(
+         else:  
+            #RG: I think it's considered better to raise your own custom errors rather than python built-in (SOLVED)
+            raise InputError(
                'The *domains arguments must be either strings or PDBModels.')
 
          i += 1
@@ -339,200 +515,25 @@ class Ranch( Executor ):
       return None
 
 
-   @classmethod  #RG: wouldn't it be more logical to simply provide this as a tool function outside the class?
-   def embed(cls, dom, to_embed):
-      '''
-      Embeds one model (int_dom - possibly with multiple chains) into another 
-      (dom) to trick ranch to treat them as a simple single-chain domain
-
-      :param dom: model of a single chain domain that will contain the
-                  other model
-      :type dom: PDBModel
-      :param int_dom: model of a single or multiple chain domain that will be 
-                   embedded into 'dom'
-      :type int_dom: PDBModel
-      '''
-
-      first = dom.take(dom.res2atomIndices([0,1]))
-      last = dom.take(dom.res2atomIndices(list(range(2,dom.lenResidues()))))
-
-      return first.concat(to_embed,last)
-      
-
-   ## Make class method?  #RG: if you never use the class argument, the method could be moved outside the class
-   @classmethod
-   def extract_fixed(cls, dom, full):
-      """
-      Extracts one model from another
-      Finds the position of 'dom' inside 'full' comparing the sequence and atom
-      coordinates for each chain in dom, gets the chain index and takes all the
-      chains but the ones selected.
-      
-      :param dom: model of a single or multiple chain domain
-      :type dom: PDBModel
-      :param full: model of a multiple chain domain that contains 'dom'
-      :type full: PDBModel
-
-      :return: model 'full' without dom
-      :type return: PDBModel
-      """
-
-      chains_to_take = list(range(full.lenChains()))
-
-      # Make a list with one PDBModel for each chain in dom
-      # This is to find one chain from dom at a time, in case they are not
-      # together in 'full' ... is this even necessary?
-      doms = [dom.takeChains([i]) for i in range(dom.lenChains())]
-
-      for m in doms:
-
-         start = m.sequence()[:10]  # could use the entire sequence instead
-         
-         if re.search(start, full.sequence()):
-            # If the m sequence is inside full sequence
-            # Action: look for the position of m inside full, and extract
-
-            matches = re.finditer(start, full.sequence())
-            first_res_m = m.res2atomIndices([0])
-            lowm = first_res_m[0]
-            highm = first_res_m[-1]
-            
-            for match in matches:
-               index = match.start()
-               first_res_full = full.res2atomIndices([index])
-
-               lowfull = first_res_full[0]
-               highfull = first_res_full[-1]
-
-               if N.all(m.xyz[lowm:highm+1] == full.xyz[lowfull:highfull+1]):
-                  # If the atoms for the first residue are in the same positions
-                  # Action: remove chain index from chains_to_take
-                  chain_ind = full.atom2chainIndices(first_res_full)
-                  chains_to_take.remove(chain_ind[0])
-                  break
-
-      full = full.takeChains(chains_to_take)
-
-      return full
-
-   ## make class method?
-   @classmethod
-   def extract_embedded(cls, full, embedded):
-      """
-      Extracts one  or more PDBModels from another
-      Finds the sequence and location of each domain in embedded dictionary.
-      Extracts the atoms and concatenates at the end of 'self'. 
-      Renumbers amino acids, id number and renames chains in the process.
-      
-      :param embedded: dictionary with embedded domains and its position (index)
-                        in the full sequence
-      :type embedded: dictionary
-
-      :return: 'full' with embedded domains concatenated at the end as 
-               independent chains
-      :type return: PDBModel
-      """
-
-      ## For the higher level program, add an argument to provide the dictionary
-
-      chains_to_take = list(range(full.lenChains()))
-
-      r = B.PDBModel()
-      emb_ind = []   # List for start and end indexes for each embedded domain
-
-      for dom, i_start in embedded.items():
-         
-         i_end = i_start + len(dom.sequence())
-
-         if full.sequence()[i_start:i_end] == dom.sequence():
-            r = r.concat(full.takeResidues(list(range(i_start, i_end))))
-            emb_ind.append((i_start, i_end))
-         else:
-            raise TypeError('Problem with the embedded sequence/index')
-
-      # Sort the list to remove the atoms from highest to lowest index,
-      # so the indexes won't be affected
-      emb_ind = sorted(emb_ind, key=itemgetter(0), reverse=True)
-
-      for i_start, i_end in emb_ind:
-         atomi_start = full.resIndex()[i_start]
-         atomi_end = full.resIndex()[i_end]
-         full.remove(list(range(atomi_start, atomi_end)))
-
-      # Concat the original chain that previously contained the embedded domains
-      for i in range(full.lenChains()-1):
-         full.mergeChains(0)
-
-      full.renumberResidues()   # Renumber amino acids
-      full = full.concat(r)     # Combine full and r
-      full.addChainId()         # Add chain IDs with consecutive letters
-                                # NOTE: add feature for personalized chain names
-
-      # Renumber atoms
-      full['serial_number'] = N0.arange(1,len(full)+1)
-
-      return full
-
-   @classmethod
-   def extract_symmetric(cls, full, symseq, embedded):
-      """
-      Extracts one or more embedded chains from a PDBModel with a symmetric
-      structure
-      
-      :param full:   PDBModel with symmetric structure, that contains embedded 
-                     chains
-      :type full: PDBModel
-
-      :param symseq: sequence of the symmetric unit, i.e. the sequence that is
-                     multiplied in the symmetric structure
-      :type symseq: string
-      :param embedded: dictionary with embedded domains and its position (index)
-                        in the sequence of 'full'
-      :type embedded: dictionary
-      :return: 'full' with embedded domains concatenated at the end for each
-               symmetric unit
-      :type full: PDBModel
-      """
-      
-      symunits = []
-
-      if re.search(symseq, full.sequence()):
-
-         matches = re.finditer(symseq, full.sequence())
-
-         for match in matches:
-            istart, iend = match.span()
-            symunit = full.takeResidues(list(range(istart, iend)))
-            # Extract embedded domains one symunit at a time
-            symunits.append(Ranch.extract_embedded(symunit, embedded))
-
-         r = symunits[0]
-
-         for i in range(1,len(symunits)):
-            r = r.concat(symunits[i])
-
-         r.addChainId()
-         r['serial_number'] = N0.arange(1,len(r)+1)
-
-      else:
-         raise TypeError("Symseq and full.sequence() don't match")
-
-      return r
-
-
    def prepare(self):
       """
       Overrides Executor method.
       """
-      # Create tempdir for pdbs and seq.... it is already created
-      Executor.prepare(self)
+
+      try:
+         self._setup()
+      except:
+         self.cleanup()
+         raise
 
       # Write pdb files
       for i in range(len(self.doms_in)):
-         pdb_name = self.tempdir + '/' + str(i) + '_'  #RG: see os.path.join comment in __init__
-         if self.doms_in[i].validSource() == None:     #RG: slightly faster: ...validSource() is None
+         pdb_name = os.path.join(self.tempdir, str(i)+'_')
+         if self.doms_in[i].validSource() is None:     #RG: slightly faster: ...validSource() is None (SOLVED)
+            # If it was a pdb created 'de novo'
             pdb_name += '.pdb'
          else:
+            # If it comes directly from a file
             pdb_name += self.doms_in[i].sourceFile()[-8:]
 
          self.pdbs_in.append(pdb_name)
@@ -542,8 +543,8 @@ class Ranch( Executor ):
       with open(self.f_seq, 'w') as f:
          f.write(self.sequence)
 
-      # Generate by default 10 models, with no intensities
-      self.args = self.f_seq + ' -q=10 -i'   #RG: make this another __init__ parameter!
+      # Generate n models with no intensities
+      self.args = self.f_seq + ' -q=%s -i' % self.n   #RG: make this another __init__ parameter! (SOLVED)
 
       if self.symtemplate:
          self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, 
@@ -585,14 +586,14 @@ class Ranch( Executor ):
       """
       
       ### Retrieve models created as PDBModels
-      m_paths = [self.dir_models + '/' + f for f in os.listdir(
+      m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
          self.dir_models)]
 
       if self.symtemplate:
-         self.result = [Ranch.extract_symmetric(B.PDBModel(m), self.symseq,
+         self.result = [extract_symmetric(B.PDBModel(m), self.symseq,
             self.embedded) for m in m_paths]
       else:
-         self.result = [Ranch.extract_embedded(B.PDBModel(m), self.embedded
+         self.result = [extract_embedded(B.PDBModel(m), self.embedded
             ) for m in m_paths]
 
 
@@ -601,10 +602,7 @@ class Ranch( Executor ):
       Delete temporary files
       """
       if not self.debug:
-         t.tryRemove(self.tempdir, tree=True)
-
-      super().cleanup() # I think this ultimately does the same as previous line
-      #RG: Yep, default cleanup is taking care of this (and only removes if the folder is new)
+         T.tryRemove(self.tempdir, tree=True)
 
 
 
@@ -629,26 +627,35 @@ class TestRanch(BT.BiskitTest):
 
    TAGS = [ BT.EXE, BT.LONG ]
 
-   #RG: I know this is convenient but very bad idea to execute any code in the class definition body
+   #RG: I know this is convenient but very bad idea to execute any code in the class definition body (SOLVED)
+   
    #RG: problem 1: this will need to be executed whenever the module is loaded (not just for testing)
-   #RG: problem 2: this will break on any other computer except your own (paths :) )
-   ## Write tests for cases 1, 4, 5, 7, and 10
-   dom1 = B.PDBModel(
-    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb")
-   dom2 = B.PDBModel(
-    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/Histone_H3.pdb")
-   domAB1 = B.PDBModel(
-    "/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/4/dom1_AB.pdb")
-   domAB2 = domAB1.clone()
+   #JG:  - why run it every time the module is loaded?
+   #     - these tests take like 35 seconds
+   
+   #RG: problem 2: this will break on any other computer except your own (paths :) ) (SOLVED(?))
 
    #RG: one pattern that should work instead:
-   DOM1 = None ## define empty class variable
-   DOM2 = None
+   dom1 = None ## define empty class variable
+   dom2 = None 
+   domAB1 = None
+   domAB2 = None
+   testpath = None
 
-   def setup(self):
-       self.DOM1 = DOM1 or B.PDBModel( t.testRoot('ranch/1/2z6o_mod.pdb') )
-       self.DOM2 = DOM2 or B.PDBModel( t.testRoot('ranch/1/Histone_H3.pdb') )
-       ## this will load the PDBs only once even though setup is run for every test
+   def setUp(self):
+      # self.DOM1 = DOM1 or B.PDBModel( T.testRoot('ranch/1/2z6o_mod.pdb') )
+      # self.DOM2 = DOM2 or B.PDBModel( T.testRoot('ranch/1/Histone_H3.pdb') )
+      ## this will load the PDBs only once even though setup is run for every test
+      ## doesn't it need the 'self.'DOM1 ?
+      
+      ## Is this enough so it doesn't break in other computers?
+      self.testpath = self.testpath or \
+         os.path.join(os.path.abspath(os.path.dirname(__file__)), 'testdata')
+      
+      self.dom1 = self.dom1 or B.PDBModel(os.path.join(self.testpath, '2z6o_mod.pdb'))
+      self.dom2 = self.dom2 or B.PDBModel(os.path.join(self.testpath, 'Histone_H3.pdb'))
+      self.domAB1 = self.domAB1 or B.PDBModel(os.path.join(self.testpath, 'dom1_AB.pdb'))
+      self.domAB2 = self.domAB2 or self.domAB1.clone()
 
    def test_example1(self):
       call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
