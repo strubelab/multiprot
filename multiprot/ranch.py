@@ -353,30 +353,12 @@ class Ranch(Executor):
             # Action: take symunit from symtemplate
             self.symunit = symtemplate.takeChains([0])
 
+      # Path for config file
+      self.configpath = [os.path.join(os.path.abspath(os.path.dirname(__file__)),
+       'exeConfig/')]
 
-      # using this command
-      # super().__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
-      # creates the following error in all tests, I don't know why
-
-      # ======================================================================
-      # ERROR: test_example1 (__main__.TestRanch)
-      # ----------------------------------------------------------------------
-      # Traceback (most recent call last):
-      #   File "ranch.py", line 875, in test_example1
-      #     call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
-      #   File "ranch.py", line 401, in __init__
-      #     super().__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
-      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/executor.py", line 312, in __init__
-      #     self.exe = ExeConfigCache.get( name, strict=strict )
-      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/exeConfigCache.py", line 76, in get
-      #     ExeConfigCache.CACHE[ name ] = ExeConfig( name, **kw )
-      #   File "/Users/guzmanfj/Documents/Stefan/biskit3/biskit/exe/exeConfig.py", line 147, in __init__
-      #     % (self.dat, self.name))
-      # biskit.exe.exeConfig.ExeConfigError: Could not find configuration file /Users/guzmanfj/Documents/Stefan/biskit3/biskit/data/defaults/exe_<__main__.Ranch object at 0x1043ca668>.dat for program <__main__.Ranch object at 0x1043ca668>.
-
-      # Will look into it later maybe.. the command below works fine
-
-      Executor.__init__(self, 'ranch', tempdir=tempdir, cwd=tempdir, **kw)
+      super().__init__('ranch', tempdir=tempdir, cwd=tempdir,
+         configpath=self.configpath, **kw)
 
    def _setup(self):
       """
@@ -389,7 +371,7 @@ class Ranch(Executor):
 
       ## NOTE: The numbers are references to the steps in DIAGRAM.png
 
-      i = 0   # Counter for domain position
+      i = 0   # Counter for domain position. Counts only PDBModels
       for element in self.domains:
          
          if isinstance(element, str):    # 1
