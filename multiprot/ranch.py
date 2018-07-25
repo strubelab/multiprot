@@ -29,7 +29,6 @@ from errors import *
 from biskit.exe.executor import Executor
 import biskit.tools as T #RG: I prefer uppercase (T) to distinguish variables and modules (SOLVED)
 
-
 #### Helper tool misc functions ####
 
 def embed(dom, to_embed):
@@ -592,9 +591,9 @@ class Ranch(Executor):
 #############
 ##  TESTING        
 #############
-import biskit.test as BT
+import testing
 
-class TestRanch(BT.BiskitTest):
+class TestRanch(testing.AutoTest):
    """
    Test class
    Test examples 1, 4, 5, 7, and 10 from ranch_examples/
@@ -607,7 +606,7 @@ class TestRanch(BT.BiskitTest):
    each example
    """
 
-   TAGS = [ BT.EXE, BT.LONG ]
+   TAGS = [ testing.EXE, testing.LONG ]
 
    #RG: I know this is convenient but very bad idea to execute any code in the class definition body (SOLVED)
    
@@ -738,4 +737,4 @@ class TestRanch(BT.BiskitTest):
 
 if __name__ == '__main__':
 
-   BT.localTest(debug=False)
+   testing.localTest(debug=False)
