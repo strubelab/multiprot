@@ -1,5 +1,3 @@
-#RG: please convert to 4-space indentation (e.g. WingIDE can do it automatically)
-#RG: remove non-ascii characters otherwise we need to specify encoding
 """
 Author: Francisco Javier Guzman-Vega
 
