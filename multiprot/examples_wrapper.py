@@ -47,9 +47,9 @@ import multiprot.new_ranch_6 as r
 import biskit as b
 
 dom1 = b.PDBModel(
-    '/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/2z6o_mod.pdb')
+    '/Users/guzmanfj/Documents/Stefan/multiprot/multiprot/testdata/2z6o_mod.pdb')
 dom2 = b.PDBModel(
-    '/Users/guzmanfj/Documents/Stefan/multiprot/ranch_examples/1/Histone_H3.pdb')
+    '/Users/guzmanfj/Documents/Stefan/multiprot/multiprot/testdata/Histone_H3.pdb')
 call = r.Ranch(dom1,'GGGGGGGGGG',dom2)
 models = call.run()
 
@@ -125,7 +125,7 @@ models = call.run()
 
 
 ## Save PDBModels
-filenames = ['/Users/guzmanfj/Documents/Stefan/multiprot/multiprot/tests/m' + str(i) + '.pdb' for i in range(10)]
+filenames = ['/Users/guzmanfj/Documents/Stefan/Pymol mutations/MPK4_models/test/m' + str(i) + '.pdb' for i in range(10)]
 
 for i in range(len(models)):
     models[i].writePdb(filenames[i])
