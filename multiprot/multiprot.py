@@ -12,6 +12,7 @@ import argparse
 import biskit as b
 import random
 import ranch as r
+import pulchra as p
 
 # If type=divide does not work, try action='append_const'
 #RG: no big deal but instead of `string`, which looks like a type definition, convention is `s`
@@ -142,35 +143,37 @@ class Multiprot:
 
         random.shuffle(chains)
 
-for i in range(len(chains)):
-    if chains[i][4] == False:   # If it is still not modeled
-        call = r.Ranch(*chains[i][0], chains=chains[i][1], symmetry=args.symmetry, 
-            fixed = chains[i][2], symtemplate = chains[i][3], 
-            pool_sym=args.pool_sym)
-        models = call.run()
-        chains[i][4] = True
-        
-        ## QUESTION: TAKE ONE OR TEN MODELS FOR NEXT STEP?
+        def model_chains(self):
 
-    # Search every ('file.pdb', 'chainID') pair in other chains of chain[x][5] to 
-    # see if the same multichain pdb in chain i is used in another chain j
-    for pdb, chainID in chains[i][5]:
-        # For each pair of ('file.pdb', 'chainID') in present chain
-        
-        for j in range(i+1, len(chains)):
-            # For each of the remaining chains in 'chains'
-            
-            for _pdb, _chainID in chains[j][5]:
-                # For each ('file.pdb', 'chainID') pair in chain j[5]
-                
-                if pdb == _pdb:
-                    # The same pdb is used, probably with a different chain
-                    # Now what
-                    # I'll tell  you what
-                    # Extract the chain with new coordinates, embed chains[i],
-                    # EXCEPT parts that are in chains[j] bound to chains[i],
-                    # those will be taken from chains[i] and passed to ranch to
-                    # be modeled as individual fixed domains in chains[j]
+            for i in range(len(chains)):
+                if chains[i][4] == False:   # If it is still not modeled
+                    call = r.Ranch(*chains[i][0], chains=chains[i][1], symmetry=args.symmetry, 
+                        fixed = chains[i][2], symtemplate = chains[i][3], 
+                        pool_sym=args.pool_sym)
+                    models = call.run()
+                    chains[i][4] = True
+                    
+                    ## QUESTION: TAKE ONE OR TEN MODELS FOR NEXT STEP?
+
+                # Search every ('file.pdb', 'chainID') pair in other chains of chain[x][5] to 
+                # see if the same multichain pdb in chain i is used in another chain j
+                for pdb, chainID in chains[i][5]:
+                    # For each pair of ('file.pdb', 'chainID') in present chain
+                    
+                    for j in range(i+1, len(chains)):
+                        # For each of the remaining chains in 'chains'
+                        
+                        for _pdb, _chainID in chains[j][5]:
+                            # For each ('file.pdb', 'chainID') pair in chain j[5]
+                            
+                            if pdb == _pdb:
+                                # The same pdb is used, probably with a different chain
+                                # Now what
+                                # I'll tell  you what
+                                # Extract the chain with new coordinates, embed chains[i],
+                                # EXCEPT parts that are in chains[j] bound to chains[i],
+                                # those will be taken from chains[i] and passed to ranch to
+                                # be modeled as individual fixed domains in chains[j]
 
 
 

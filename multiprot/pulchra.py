@@ -26,6 +26,8 @@ class Pulchra(Executor):
 
     >>> rebuild = call.run()
 
+    The rebuilt model is created in the same directory as the input pdb
+
     """
 
     def __init__(self, f_in, **kw):
@@ -33,11 +35,18 @@ class Pulchra(Executor):
         """
         Create the variables that Pulchra needs to run
 
-        :param protein: Protein model that will be rebuilt by pulchra
-        :type protein: PDBModel
+        :param f_in: path for the input pdb file to be rebuilt
+        :type f_in: str
 
-        :param dest: destination directory for the model
-        :type dest: str
+        :param kw:  additional key=value parameters are passed on to
+                    'Executor.__init__'. For example:
+                    ::
+                        debug    -  0|1, keep all temporary files (default: 0)
+                        verbose  -  0|1, print progress messages to log
+                                        (log != STDOUT)
+                        nice     -  int, nice level (default: 0)
+                        log      -  biskit.LogFile, program log (None->STOUT)
+                                        (default:None)
         """
         self.f_in = f_in
 
@@ -48,9 +57,7 @@ class Pulchra(Executor):
         self.pulchra = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), 'pulchra/pulchra')
 
-        super().__init__(self.pulchra, strict=False, args=self.f_in)
-
-
+        super().__init__(self.pulchra, strict=False, args=self.f_in, **kw)
 
 
 
