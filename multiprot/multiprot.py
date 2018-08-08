@@ -11,8 +11,6 @@ Script that handles command line argument parsing and calls Builder module
 import argparse
 import biskit as b
 import random
-import ranch as r
-import pulchra as p
 import builder
 import os
 
@@ -22,6 +20,11 @@ def divide(s):
     return tuple(s.split(':'))
     # if the string is not properly formatted
     # raise argparse.ArgumentTypeError(msg)
+
+def path_exists(s):
+    if not os.path.exists(s):
+        raise argparse.ArgumentTypeError('Invalid destination for output files.')
+    return s
 
 # Supported symmetries for --symmetry argument
 supp_sym = ['p'+str(i) for i in range(1,20)]
@@ -61,10 +64,14 @@ parser.add_argument('--pool_sym', '-o', default='mix',
 parser.add_argument('--fixed', '-f', default=[], nargs='*',
     help='Specify one or more domains to be fixed in their original coordinates.')
 
-parser.add_argument('--directory', '-d', default=os.getcwd(), help='Specify the\
-    directory where the output models will be saved (default cwd)')
+parser.add_argument('--destination', '-d', default=os.getcwd(), type=path_exists, 
+    help='Specify the directory where the output models will be saved (default cwd)')
 
-parser.add_argument('args', nargs=argparse.REMAINDER)
+parser.add_argument('--debug', action='store_true')
+
+# parser.add_argument('args', nargs=argparse.REMAINDER, help="Additional key=value\
+#      parameters are passed on to 'Executor.__init__'. For example:\n\
+#         debug   - 0|1, keep all temporary files (default: 0)")
 
 #argument_default = argparse.SUPPRESS
 
@@ -114,10 +121,12 @@ def create_args(args):
                 rdomains.append(args.chain[i][j][0])
 
         # chains[i] = (domains/linkers, chains dict, fixed domains, 
-        #               symtemplate, already modeled, multichain domains)
+        #               symtemplate, pool symmetry, already modeled, 
+        #               multichain domains)
         # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for each domain with
         # a chain specified
-        chains.append((rdomains, rchains, rfixed, rsymtemp, False, rmulti))
+        chains.append((rdomains, rchains, rfixed, rsymtemp, args.pool_sym, 
+            False, rmulti))
 
     random.shuffle(chains)
     return chains
@@ -127,14 +136,8 @@ chains = create_args(args)
 
 # Create models
 # returns list with 10 models
-call = builder.Builder(chains)
+call = builder.Builder(chains, args.destination, args.debug)
 models = call.build()
-
-# Write models to disk
-filenames = [args.directory + 'm%02d.pdb' % i for i in range(1,11)]
-
-for i in range(len(models)):
-    models[i].writePDB(filenames[i])
 
 
 

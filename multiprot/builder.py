@@ -8,6 +8,10 @@ to handle single and multiple chain scenarios
 ##### FOR THE EARLY IMPLEMENTATION OF MULTIPROT, WE WILL ASSUME ONLY ONE CHAIN
 ##### IN THE INPUT
 
+import ranch as r
+import pulchra as p
+import tempfile
+import os
 
 class Builder:
     """
@@ -17,12 +21,14 @@ class Builder:
     
     """
 
-    def __init__(self, chains):
+    def __init__(self, chains, dest, debug):
         """
         :param args: Object that contains the arguments parsed from the command line
         :type args: argparse.Namespace object created by calling parser.parse_args()
         """
         self.chains = chains
+        self.dest = dest
+        self.debug = debug
 
     def build(self):
         """
@@ -30,38 +36,34 @@ class Builder:
         PDBModels
         """
 
+        # Call ranch for every chain
         for i in range(len(chains)):
-            if chains[i][4] == False:   # If it is still not modeled
-                call = r.Ranch(*chains[i][0], chains=chains[i][1], symmetry=args.symmetry, 
-                    fixed = chains[i][2], symtemplate = chains[i][3], 
-                    pool_sym=args.pool_sym)
+            if chains[i][5] == False:   # If it is still not modeled
+                call = r.Ranch(*chains[i][0], chains=chains[i][1], 
+                    symmetry=args.symmetry, fixed = chains[i][2], 
+                    symtemplate = chains[i][3], pool_sym=chains[i][4],
+                    debug=self.debug)
                 models = call.run()
                 chains[i][4] = True
                 
-                ## QUESTION: TAKE ONE OR TEN MODELS FOR NEXT STEP?
+        ## ***** code for multiple chains goes here
 
-            # Search every ('file.pdb', 'chainID') pair in other chains of chain[x][5] to 
-            # see if the same multichain pdb in chain i is used in another chain j
-            for pdb, chainID in chains[i][5]:
-                # For each pair of ('file.pdb', 'chainID') in present chain
-                
-                for j in range(i+1, len(chains)):
-                    # For each of the remaining chains in 'chains'
-                    
-                    for _pdb, _chainID in chains[j][5]:
-                        # For each ('file.pdb', 'chainID') pair in chain j[5]
-                        
-                        if pdb == _pdb:
-                            # The same pdb is used, probably with a different chain
-                            # Now what
-                            # I'll tell  you what
-                            # Extract the chain with new coordinates, embed chains[i],
-                            # EXCEPT parts that are in chains[j] bound to chains[i],
-                            # those will be taken from chains[i] and passed to ranch to
-                            # be modeled as individual fixed domains in chains[j]
+        # create temporary folder to write models
+        self.tempdir = tempfile.mkdtemp('', self.__class__name__.lower() + '_')
+        # create names to write pdbs into
+        pdb_paths = [os.path.join(tdir, 'm%02d.pdb' % i) for i in range(1,11)]
 
+        # Write pdb, call pulchra and move rebuilt pdb to destination
+        for i in range(len(models)):
+            models[i].writePdb(pdb_paths[i])
+            call = p.Pulchra(pdb_paths[i])
+            rebuild = call.run()
+            os.rename(pdb_paths[i][:-3]+'rebuilt.pdb', 
+                os.path.join(self.dest, 'm%02d.pdb' % i))
 
-
-
-
-
+    def cleanup(self):
+        """
+        Delete temporary files
+        """
+        if not self.debug:
+            T.tryRemove(self.tempdir, tree=True)
