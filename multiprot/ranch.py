@@ -636,11 +636,11 @@ class TestRanch(testing.AutoTest):
             os.path.join(os.path.abspath(os.path.dirname(__file__)), 'testdata')
         
         self.dom1 = self.dom1 or B.PDBModel(os.path.join(self.testpath, 
-            '2z6o_mod.pdb'))
+            '2z6o.pdb'))
         self.dom2 = self.dom2 or B.PDBModel(os.path.join(self.testpath, 
-            'Histone_H3.pdb'))
+            'histone.pdb'))
         self.domAB1 = self.domAB1 or B.PDBModel(os.path.join(self.testpath, 
-            'dom1_AB.pdb'))
+            'domAB1.pdb'))
         self.domAB2 = self.domAB2 or self.domAB1.clone()
 
     def test_example1(self):
