@@ -376,12 +376,11 @@ class Ranch(Executor):
             if isinstance(element, str):    # 1
                 # If is sequence, add to sequence and continue
                 self.sequence += element
-                continue      #RG: continue and break are, if at all possible, not supposed to be used in good code :)
 
             elif isinstance(element, B.PDBModel):
                 # if is PDBModel
 
-                if self.multich[i]=='yes':
+                if element is self.symtemplate:
                     # If is symtemplate, there is symmetry ... 2
 
                     # For multiple chains with symmetry, the symetric unit should 
@@ -397,7 +396,7 @@ class Ranch(Executor):
                     self.doms_in.append(element)
 
                 elif element.lenChains()==1 or self.fixed[i] == 'yes':
-                    # If is single chain-domain ... 2.1
+                    # If is single chain-domain, 
                     # Or is a domain already modeled/fixed ... 3
 
                     # THE HIGHER LEVEL PROGRAM MUST GIVE THE ENTIRE MODEL WITH
@@ -414,7 +413,7 @@ class Ranch(Executor):
                     self.doms_in.append(element)
 
                 else:
-                    # Not modeled, but paired with another domain
+                    # Not modeled, and paired with another domain
 
                     if element in self.chains and \
                         isinstance(self.chains[element], (list, tuple)):   # 7
@@ -460,11 +459,11 @@ class Ranch(Executor):
 
                     else: #RG: mhm... what is this embedding thing about? ... MAGIC
                         # Only one domain from element is part of the chain
-                        # Action: Embed the paired domains into the selected chain
+                        # Action: Embed the domain WITH paired domains into the selected chain
 
                         # 9
                         # Get chain index
-                        if element in self.chains:
+                        if element in self.chains:  # If chain to take is specified
                             chain_id = self.chains[element]
                             mask_chain = element.maskFrom('chain_id', chain_id)
                             i_mask_chain = N.nonzero(mask_chain)[0]
@@ -481,6 +480,8 @@ class Ranch(Executor):
                         self.sequence += m_emb.sequence()
                         self.doms_in.append(m_emb)
 
+                i += 1
+
         ####### DIAGRAM FINISHES... REACHED STEP 9 #########
 
             else:  
@@ -488,10 +489,9 @@ class Ranch(Executor):
                 raise InputError(
                     'The *domains arguments must be either strings or PDBModels.')
 
-            i += 1
 
         # Symseq is the sequence that will be multiplied in the symmetric 
-        # structure
+        # structure ... TO BE PASSED ON TO HIGHER SCRIPT
         if self.symtemplate:
             self.symseq = self.sequence
 
@@ -512,7 +512,7 @@ class Ranch(Executor):
         # Write pdb files
         for i in range(len(self.doms_in)):
             pdb_name = os.path.join(self.tempdir, str(i)+'_')
-            if self.doms_in[i].validSource() is None:     #RG: slightly faster: ...validSource() is None (SOLVED)
+            if self.doms_in[i].validSource() is None: 
                 # If it was a pdb created 'de novo'
                 pdb_name += '.pdb'
             else:
