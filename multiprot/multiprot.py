@@ -17,131 +17,176 @@ import builder
 import os
 
 # If type=divide does not work, try action='append_const'
-#RG: no big deal but instead of `string`, which looks like a type definition, convention is `s`
-def divide(s):  
-    return tuple(s.split(':'))
-    # if the string is not properly formatted
-    # raise argparse.ArgumentTypeError(msg)
+
+def divide(s):
+    """
+    Converts entries for the --chain argument into tuples, and checks if PDB file
+    exists
+
+    E.g.
+    ABCD.pdb:A --> ('ABCD.pdb','A')
+    ABCD.pdb   --> ('ABCD.pdb',)
+    
+    :param s: string with one of the entries for --chain argument
+    :type s: str
+
+    """
+    r = tuple(s.split(':'))
+    # Does not work... find out why
+    # if not os.path.exists(r[0]):
+    #     raise argparse.ArgumentTypeError('Specified PDB file does not exist')
+    
+    return r
 
 def path_exists(s):
+    """
+    Checks if path specified for output exists
+
+    :param s: path specified for the --destination parameter
+    :type s: str
+    """
     if not os.path.exists(s):
         raise argparse.ArgumentTypeError('Invalid destination for output files.')
     return s
 
-# Supported symmetries for --symmetry argument
-supp_sym = ['p'+str(i) for i in range(1,20)]
-supp_sym += ['p'+str(i) for i in range(22,132,10)] + ['p222']
 
-# Add positional and optional arguments
-# NOTES: try formatter_class=argparse.MetavarTypeHelpFormatter
-#        if no argument is given, show help (and possibly raise error)
-#        look at customizing file parsing
-#        look at exiting methods
+def parsing(args=None):
+    """
+    Creates the argument parser instance and applies it to the command line input
 
-parser = argparse.ArgumentParser(usage='', 
-    description='''Build multiple chain-proteins. The arguments can also
-    be read from a file, in which case the file name must have the @ prefix''')
+    :param args:    list with the arguments to be parsed (only for testing
+                    purposes). If none is provided, it takes them from sys.argv
+    :type args:     list
+    """
 
-parser.add_argument('--chain', '-c', action='append', nargs='+', type=divide, 
-    help='Add a new chain to the model', required=True)
+    # Supported symmetries for --symmetry argument
+    supp_sym = ['p'+str(i) for i in range(1,20)]
+    supp_sym += ['p'+str(i) for i in range(22,132,10)] + ['p222']
 
-parser.add_argument('--split', '-spl', default=None, 
-    help='Split one or more chains from a given PDB')
+    # Add positional and optional arguments
+    # NOTES: try formatter_class=argparse.MetavarTypeHelpFormatter
+    #        if no argument is given, show help (and possibly raise error)
+    #        look at customizing file parsing
+    #        look at exiting methods
 
-parser.add_argument('--symmetry', '-sym', default='p1',
-    help='What kind of symmetry do you wish to have in your molecule. Supported\n\
-    symmetries are: p1, p2, …, p19 (nineteen-fold), p22, p32, p42, p52, p62,\n\
-    …, p122, p222.', choices=supp_sym)
+    parser = argparse.ArgumentParser(usage='', 
+        description='''Build multiple chain-proteins. The arguments can also
+        be read from a file, in which case the file name must have the @ prefix''')
 
-parser.add_argument('--symtemplate', '-t', default=[], action='append', 
-    help='Which domain will be the symmetry core, in case of symmetry other than\
-     p1 specified')
+    parser.add_argument('--chain', '-c', action='append', nargs='+', type=divide, 
+        help='Add a new chain to the model', required=True)
 
-## Check the options, because ranch wrapper only supports full words right now
-parser.add_argument('--poolsym', '-o', default='mix', 
-    choices=['mixed', 'm', 'symmetry', 's', 'asymmetry', 'a'], 
-    help='Specify the overall symmetry of the molecules to be produced, i.e. \
-    all symmetric [s], all asymmetric [a] or mixed. [m]')
+    # Feature not supported yet
+    # parser.add_argument('--split', '-spl', default=None, 
+    #     help='Split one or more chains from a given PDB')
 
-parser.add_argument('--fixed', '-f', default=[], nargs='*',
-    help='Specify one or more domains to be fixed in their original coordinates.')
+    parser.add_argument('--symmetry', '-sym', default='p1',
+        help='What kind of symmetry do you wish to have in your molecule. Supported\n\
+        symmetries are: p1, p2, …, p19 (nineteen-fold), p22, p32, p42, p52, p62,\n\
+        …, p122, p222.', choices=supp_sym)
 
-parser.add_argument('--destination', '-d', default=os.getcwd(), type=path_exists, 
-    help='Specify the directory where the output models will be saved (default cwd)')
+    parser.add_argument('--symtemplate', '-t', default=[], action='append', 
+        help='Which domain will be the symmetry core, in case of symmetry other than\
+         p1 specified')
 
-parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--poolsym', '-o', default='m', choices=['m', 's', 'a'], 
+        help='Specify the overall symmetry of the molecules to be produced, i.e. \
+        all symmetric [s], all asymmetric [a] or mixed. [m]')
 
-# parser.add_argument('args', nargs=argparse.REMAINDER, help="Additional key=value\
-#      parameters are passed on to 'Executor.__init__'. For example:\n\
-#         debug   - 0|1, keep all temporary files (default: 0)")
+    parser.add_argument('--fixed', '-f', action='append', default=[], nargs='*',
+        help='Specify one or more domains to be fixed in their original coordinates.')
 
-#argument_default = argparse.SUPPRESS
+    parser.add_argument('--destination', '-d', default=os.getcwd(), type=path_exists, 
+        help='Specify the directory where the output models will be saved (default cwd)')
 
-args = parser.parse_args()
+    parser.add_argument('--debug', action='store_true')
 
-# vars(args)  returns dictionary with attributes
+    # parser.add_argument('args', nargs=argparse.REMAINDER, help="Additional key=value\
+    #      parameters are passed on to 'Executor.__init__'. For example:\n\
+    #         debug   - 0|1, keep all temporary files (default: 0)")
+
+    #argument_default = argparse.SUPPRESS
+
+    return parser.parse_args(args)
+    # vars(args)  returns dictionary with attributes
 
 
-def create_args(args):
+def create_chains(args):
     """
     Function that takes the arguments parsed from the command line and
-    returns a list with
+    returns a list with all input necessary for ranch for each chain
 
     :param args:    Namespace object created by calling .parse_args() method on 
-                    the command line arguments  
+                    the given arguments (generally from sys.argv) 
     """
     
     chains = []
 
     for i in range(len(args.chain)):    # For each chain
-        rdomains = []
-        rchains = {}
-        rfixed = []
-        rsymtemp = None
-        rmulti = []
+        rdomains = []   # List of PDBModels and strings composing the chain
+        rchains = {}    # Dictionary with chain specification for multichain pdbs
+        rfixed = []     # List with domains to be fixed in their coordinates
+        rsymtemp = None     # symtemplate
+        rmulti = []     # list of tuples [('1234.pdb', 'A'), ... ] for each domain
+                        # with a chain specified
 
         for j in range(len(args.chain[i])):
             # For each component of the chain
 
             if args.chain[i][j][0][-4:]=='.pdb':
                 pdb = b.PDBModel(args.chain[i][j][0])
-                    if len(args.chain[i][j])==2:  
-                        # If chain to be taken is specified
-                        rchains[pdb] = args.chain[i][j][1]
-                        # CHANGE THIS TO WORK WITH DUPLICATED PDB NAMES
-                        # MAYBE AN INDEX INSTEAD ?
-                        # SYMTEMPLATE PDB CANNOT BE DUPLICATED
-                        rmulti.append((args.chain[i][j][0], 
-                            args.chain[i][j][1]))
-                    if args.chain[i][j][0] in args.fixed:  
-                        # If domain will be fixed
-                        rfixed.append(pdb)
-                    if args.chain[i][j][0] in args.symtemplate:  
-                        # If is symtemplate ... THERE CAN ONLY BE ONE
-                        rsymtemp = pdb
+                if len(args.chain[i][j])==2:  
+                    # If the chain to be taken is specified, e.g.
+                    # # ABCD.pdb:A --> ('ABCD.pdb','A')
+
+                    rchains[pdb] = args.chain[i][j][1]
+                    
+                    rmulti.append((args.chain[i][j][0], 
+                        args.chain[i][j][1]))
+                    # CHANGE THIS TO WORK WITH DUPLICATED PDB NAMES
+                    # MAYBE APPEND AN INDEX ?
+                    # SYMTEMPLATE PDB CANNOT BE DUPLICATED
+                    
+
+                if args.chain[i][j][0] in args.fixed:  
+                    # If domain will be fixed
+                    rfixed.append(pdb)
+                
+                if args.chain[i][j][0] in args.symtemplate:  
+                    # If is symtemplate ... THERE CAN ONLY BE ONE
+                    rsymtemp = pdb
 
                 rdomains.append(pdb)
                 
             else:
                 rdomains.append(args.chain[i][j][0])
 
-        # chains[i] = (domains/linkers, chains dict, fixed domains, 
-        #               symtemplate, pool symmetry, already modeled, 
-        #               multichain domains)
-        # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for each domain with
-        # a chain specified
-        chains.append((rdomains, rchains, rfixed, rsymtemp, args.poolsym, 
-            False, rmulti))
+        # dictionary with arguments to be passed on to ranch
+        args_dict = {
+            "chains" : rchains, 
+            "symmetry" : args.symmetry,
+            "symtemplate" : rsymtemp, 
+            "pool_sym" : args.poolsym,
+            "fixed" : rfixed 
+            }
 
+        chains.append((rdomains, args_dict, False, rmulti))
+        # chains[i] = (domains/linkers, args_dict, already modeled (T/F), 
+        #               multichain domains)
+        # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for every domain 
+        # with a chain specified
+        
     random.shuffle(chains)
     return chains
 
-## IF NAME=__MAIN__
 
-chains = create_args(args)
+if __name__ == '__main__':
 
-# Create models
-# returns list with 10 models
-call = builder.Builder(chains, args.destination, args.debug)
-models = call.build()
+    # Parse arguments
+    args = parsing()  
+    chains = create_chains(args)
 
+    # Create models
+    # returns list with 10 models
+    call = builder.Builder(chains, args.destination, args.debug)
+    models = call.build()
