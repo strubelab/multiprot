@@ -3,13 +3,6 @@ Script that handles command line argument parsing and calls Builder module
 
 """
 
-## Question: prevent the user to 
-
-#RG: I think this should also be a class with methods, defaults and all
-#RG: the actual script should then be very small and only deal with command line parsing and argument cleanup
-#JG:  okay so I will divide this in two then? One only for argument parsing and
-#     other for the methods
-
 import argparse
 import biskit as b
 import random

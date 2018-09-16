@@ -22,8 +22,6 @@ class TestMultiprot(testing.AutoTest):
     argstring1 = None
     argstring4 = None
     argstring5 = None
-    argstring7 = None
-    argstring10 = None
 
     def setUp(self):
 
