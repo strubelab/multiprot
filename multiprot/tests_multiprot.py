@@ -63,6 +63,10 @@ class TestMultiprot(testing.AutoTest):
             isinstance(chain[0][2], B.PDBModel), 'Problem with domains list')
     
     def test_example4(self):
+        """ 
+        Test argument parsing from self.argstring1 and check the elements of the 
+        'chains' result from create_chains()
+        """
         args = mp.parsing(self.argstring4.split())
         chains = mp.create_chains(args)
 
@@ -78,6 +82,10 @@ class TestMultiprot(testing.AutoTest):
             'Problem with chains dictionary')
 
     def test_example5(self):
+        """ 
+        Test argument parsing from self.argstring1 and check the elements of the 
+        'chains' result from create_chains()
+        """
         args = mp.parsing(self.argstring5.split())
         chains = mp.create_chains(args)
 

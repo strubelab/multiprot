@@ -75,8 +75,8 @@ def parsing(args=None):
 
     parser.add_argument('--symmetry', '-sym', default='p1',
         help='What kind of symmetry do you wish to have in your molecule. Supported\n\
-        symmetries are: p1, p2, …, p19 (nineteen-fold), p22, p32, p42, p52, p62,\n\
-        …, p122, p222.', choices=supp_sym)
+        symmetries are: p1, p2, ..., p19 (nineteen-fold), p22, p32, p42, p52, p62,\n\
+        ..., p122, p222.', choices=supp_sym)
 
     parser.add_argument('--symtemplate', '-t', default=[], action='append', 
         help='Which domain will be the symmetry core, in case of symmetry other than\
@@ -115,44 +115,43 @@ def create_chains(args):
     
     chains = []
 
-    for i in range(len(args.chain)):    # For each chain
+    for chain in args.chain:    # For each chain
         rdomains = []   # List of PDBModels and strings composing the chain
         rchains = {}    # Dictionary with chain specification for multichain pdbs
         rfixed = []     # List with domains to be fixed in their coordinates
         rsymtemp = None     # symtemplate
-        rmulti = []     # list of tuples [('1234.pdb', 'A'), ... ] for each domain
-                        # with a chain specified
+        rmulti = []     # list of tuples [('i_1234.pdb', 'A'), ... ] for each domain
+                        # with a chain specified, where i is the domain number
+                        # inside the chain
 
-        for j in range(len(args.chain[i])):
+        for i in range(len(chain)):
             # For each component of the chain
 
-            if args.chain[i][j][0][-4:]=='.pdb':
-                pdb = b.PDBModel(args.chain[i][j][0])
-                if len(args.chain[i][j])==2:  
-                    # If the chain to be taken is specified, e.g.
+            if chain[i][0][-4:]=='.pdb':     # If the element is a pdb structure
+                pdb = b.PDBModel(chain[i][0])
+                if len(chain[i])==2:  
+                    # If the chain to be taken from the domain is specified, e.g.
                     # # ABCD.pdb:A --> ('ABCD.pdb','A')
-
-                    rchains[pdb] = args.chain[i][j][1]
+                    rchains[pdb] = chain[i][1]
                     
-                    rmulti.append((args.chain[i][j][0], 
-                        args.chain[i][j][1]))
+                    # Append domain index to deal with repeated pdb names
+                    rmulti.append((str(i)+'_'+chain[i][0], chain[i][1]))
                     # CHANGE THIS TO WORK WITH DUPLICATED PDB NAMES
                     # MAYBE APPEND AN INDEX ?
                     # SYMTEMPLATE PDB CANNOT BE DUPLICATED
                     
-
-                if args.chain[i][j][0] in args.fixed:  
+                if chain[i][0] in args.fixed:  
                     # If domain will be fixed
                     rfixed.append(pdb)
                 
-                if args.chain[i][j][0] in args.symtemplate:  
-                    # If is symtemplate ... THERE CAN ONLY BE ONE
+                if chain[i][0] in args.symtemplate:  
+                    # If the domain is symtemplate ... THERE CAN ONLY BE ONE
                     rsymtemp = pdb
 
                 rdomains.append(pdb)
                 
-            else:
-                rdomains.append(args.chain[i][j][0])
+            else:   # If the element is a linker (string with sequence of AA)
+                rdomains.append(chain[i][0])
 
         # dictionary with arguments to be passed on to ranch
         args_dict = {
