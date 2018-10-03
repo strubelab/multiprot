@@ -107,31 +107,62 @@ def extract_embedded(full, embedded):
     """
     Extracts one  or more PDBModels from another
     Finds the sequence and location of each domain in embedded dictionary.
-    Extracts the atoms and concatenates at the end of 'self'. 
+    Extracts the atoms and concatenates at the end of 'full'. 
     Renumbers amino acids, id number and renames chains in the process.
+
+    It also returns the original multichain domain (before adding to the chain)
+    but with the new coordinates after modeling
     
     :param embedded: dictionary with embedded domains and its position (index)
                             in the full sequence
     :type embedded: dictionary
 
-    :return: 'full' with embedded domains concatenated at the end as 
+    :return full: 'full' with embedded domains concatenated at the end as 
                 independent chains
-    :type return: PDBModel
+    :type full: PDBModel
+    :return modeled_doms:   list with 'modeled_doms' dictionary, which has key:value pairs 
+                where key is the index (position) of the domain in the chain and
+                value is the 'original' domain with new coordinates to be used 
+                in subsequent chains
+    :type modeled_doms: list of dictionaries
     """
-
-    ## For the higher level program, add an argument to provide the dictionary
-
-    chains_to_take = list(range(full.lenChains()))
 
     r = B.PDBModel()
     emb_ind = []   # List for start and end indexes for each embedded domain
+    modeled_doms = {}   # Dict for domains that were modeled
 
-    for dom, i_start in embedded.items():
+    for dom, value in embedded.items():
+        m = value[1]    # domain that has dom embedded in
+        i_start = value[0]  # start position of dom in full
+        i_end = i_start + len(dom.sequence())   # end position of dom in full
         
-        i_end = i_start + len(dom.sequence())
+        # Remember that dom is embedded inside of m in the following way:
+        # ....FFFFFFFFFMMDDDDDDDDDDDDDDDDDDMMMMMMMMMMMMMMMMMMMMMMMMFFFFFFFFF....
+        # F = residues of full; D = residues of dom; M = residues of m
+        # dom is placed after the first two residues of m
 
-        if full.sequence()[i_start:i_end] == dom.sequence():
-            r = r.concat(full.takeResidues(list(range(i_start, i_end))))
+        # (start, end) of the first two residues of m
+        m_first = (i_start-2, i_start)
+        # (start, end) of the remaining residues of m
+        m_last = (i_end, i_end+len(m.sequence())-2)
+        # sequece of m
+        m_seq = full.sequence()[m_first[0]:m_first[1]] + \
+                full.sequence()[m_last[0]:m_last[1]]
+
+        if full.sequence()[i_start:i_end] == dom.sequence() and \
+            m_seq == m.sequence():
+            
+            embedded = full.takeResidues(list(range(i_start, i_end)))
+            embedded.atoms['chain_id'] = dom.atoms['chain_id']  # restore chain ids
+
+            m_new = full.takeResidues(list(range(*m_first))).concat(
+                full.takeResidues(list(range(*m_last))), newChain=False)
+            m_new.atoms['chain_id'] = m.atoms['chain_id']
+            m_new = m_new.concat(embedded)
+            modeled_doms[value[2]] = m_new
+            
+            r = r.concat(embedded)
+            
             emb_ind.append((i_start, i_end))
         else:
             raise MatchError('The sequence from the domain to exctract does not \
@@ -141,6 +172,7 @@ def extract_embedded(full, embedded):
     # so the indexes won't be affected
     emb_ind = sorted(emb_ind, key=itemgetter(0), reverse=True)
 
+    # Remove the embedded domains from full
     for i_start, i_end in emb_ind:
         atomi_start = full.resIndex()[i_start]
         atomi_end = full.resIndex()[i_end]
@@ -158,7 +190,7 @@ def extract_embedded(full, embedded):
     # Renumber atoms
     full['serial_number'] = N.arange(1,len(full)+1)
 
-    return full
+    return full, [modeled_doms]
 
 
 def extract_symmetric(full, symseq, embedded):
@@ -182,6 +214,7 @@ def extract_symmetric(full, symseq, embedded):
     """
     
     symunits = []
+    modeled_doms = []
 
     if re.search(symseq, full.sequence()):
 
@@ -191,7 +224,9 @@ def extract_symmetric(full, symseq, embedded):
             istart, iend = match.span()
             symunit = full.takeResidues(list(range(istart, iend)))
             # Extract embedded domains one symunit at a time
-            symunits.append(extract_embedded(symunit, embedded))
+            extracted = extract_embedded(symunit, embedded)
+            symunits.append(extracted[0])
+            modeled_doms.append(extracted[1][0])
 
         r = symunits[0]
 
@@ -204,7 +239,7 @@ def extract_symmetric(full, symseq, embedded):
     else:
         raise MatchError("Symseq could not be found inside the full domain")
 
-    return r
+    return r, modeled_doms
 
 
 class Ranch(Executor):
@@ -371,7 +406,8 @@ class Ranch(Executor):
         ## NOTE: The numbers are references to the steps in DIAGRAM.png
 
         i = 0   # Counter for domain position. Counts only PDBModels
-        for element in self.domains:
+        for k in range(len(self.domains)):
+            element = self.domains[k]
             
             if isinstance(element, str):    # 1
                 # If is sequence, add to sequence and continue
@@ -450,7 +486,8 @@ class Ranch(Executor):
                         to_embed = extract_fixed(m, element)
                         m_emb = embed(m, to_embed)
 
-                        self.embedded[to_embed] = len(self.sequence) + 2
+                        self.embedded[to_embed] = (len(self.sequence) + 2, 
+                            m.sequence(), k)
 
                         self.sequence += m_emb.sequence()
                         self.doms_in.append(m_emb)
@@ -472,10 +509,17 @@ class Ranch(Executor):
                             chain_ind = 0
 
                         m = element.takeChains([chain_ind])
+                        # I could probably replace the extract_fixed() function
+                        # with a element.takeChains([*all but chain_ind*])
                         to_embed = extract_fixed(m, element)
                         m_emb = embed(m, to_embed)
                         
-                        self.embedded[to_embed] = len(self.sequence) + 2
+                        # self.embedded = {dom:(i, m, k),...}
+                        # where dom is the embedded domain, i is the place where
+                        # it was embedded in the chain, m is the domain that will
+                        # contain dom, and k is the index (order) of this element
+                        # in the chain 
+                        self.embedded[to_embed] = (len(self.sequence) + 2, m, k)
 
                         self.sequence += m_emb.sequence()
                         self.doms_in.append(m_emb)
@@ -572,6 +616,10 @@ class Ranch(Executor):
         m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
             self.dir_models)]
 
+        # self.result = [(full1, modeled_doms1), (full2, modeled_doms2), ...]
+        # where 'full#' is the clean model generated, and 'modeled_doms#' is
+        # a dictionary with key:value pairs of
+        # *index of domain in chain*:*original domain with new coordinates*
         if self.symtemplate:
             self.result = [extract_symmetric(B.PDBModel(m), self.symseq,
                 self.embedded) for m in m_paths]
@@ -647,11 +695,16 @@ class TestRanch(testing.AutoTest):
         call = Ranch(self.dom1,'GGGGGGGGGG',self.dom2)
         models = call.run()
 
-        self.assertTrue(len(models)==10, "models does not contain 10 elements")
-        self.assertTrue(isinstance(models[0], B.PDBModel), 
-            "models contents are not PDBModels")
+        # models = [(PDBModel, [modeled_doms]), (PDBModel, [modeled_doms]), ...]
 
-        model = models[0]
+        self.assertTrue(len(models)==10, "models does not contain 10 elements")
+        self.assertTrue(isinstance(models[0], tuple) and \
+            isinstance(models[0][0], B.PDBModel) and \
+            isinstance(models[0][1], list) and \
+            isinstance(models[0][1][0], dict), 
+            "models contents are not tuples with (PDBModel, [dictionaries])")
+
+        model = models[0][0]
         self.assertTrue(model.lenChains()==1, 'Incorrect number of chains')
         self.assertTrue(len(model.sequence())==274, 'Incorrect chain length')
         self.assertTrue(model.atoms['residue_number'][-1]==274, 
@@ -659,16 +712,23 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(model.atoms['serial_number'][-1]==2181, 
             'Incorrect serial numbering')
 
+        dlist = models[0][1]
+        self.assertTrue(len(dlist)==1, 'list should have a single dict')
+        self.assertTrue(len(dlist[0])==0, 'dict should have 0 elements')
+
     def test_example4(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
             chains = {self.domAB1:'A', self.domAB2: 'B'})
         models = call.run()
 
         self.assertTrue(len(models)==10, "models does not contain 10 elements")
-        self.assertTrue(isinstance(models[0], B.PDBModel), 
-            "models contents are not PDBModels")
+        self.assertTrue(isinstance(models[0], tuple) and \
+            isinstance(models[0][0], B.PDBModel) and \
+            isinstance(models[0][1], list) and \
+            isinstance(models[0][1][0], dict), 
+            "models contents are not tuples with (PDBModel, [dictionaries])")
 
-        model = models[0]
+        model = models[0][0]
         self.assertTrue(model.lenChains()==3, 'Incorrect number of chains')
         self.assertTrue(len(model.takeChains([0]).sequence())==456 and \
             len(model.takeChains([1]).sequence())==218 and \
@@ -680,6 +740,22 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(model.atoms['serial_number'][-1]==7163, 
             'Incorrect serial numbering')
 
+        dlist = models[0][1]
+        self.assertTrue(len(dlist)==1, 'list should have a single dict')
+        
+        d = dlist[0]
+        # The d keys will be 0 and 2, as those are the indexes of self.domAB1 and
+        # self.domAB2 in the call to ranch above
+        # d[0] and d[2] have to be PDBModels with the same sequence and number of
+        # chains as self.domAB1 and self.domAB2 respectively, but with the new
+        # coordinates after being modeled
+        self.assertTrue(len(d)==2, 'dict should have 2 elements')
+        self.assertTrue(self.domAB1.sequence() == d[0].sequence() and \
+            self.domAB2.sequence() == d[2].sequence(), 'sequences from \
+            modeled_doms and original input are different')
+        self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz), 'coordinates should be\
+         the same') # As the first model is always fixed
+
     def test_example5(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
             chains = {self.domAB2: 'A'}, symmetry='p2', symtemplate=self.domAB1, 
@@ -687,10 +763,13 @@ class TestRanch(testing.AutoTest):
         models = call.run()
 
         self.assertTrue(len(models)==10, "models does not contain 10 elements")
-        self.assertTrue(isinstance(models[0], B.PDBModel), 
-            "models contents are not PDBModels")
+        self.assertTrue(isinstance(models[0], tuple) and \
+            isinstance(models[0][0], B.PDBModel) and \
+            isinstance(models[0][1], list) and \
+            isinstance(models[0][1][0], dict), 
+            "models contents are not tuples with (PDBModel, [dictionaries])")
 
-        model = models[0]
+        model = models[0][0]
         self.assertTrue(model.lenChains()==4, 'Incorrect number of chains')
         self.assertTrue(len(model.takeChains([0]).sequence())==456 and \
             len(model.takeChains([1]).sequence())==218 and \
@@ -704,13 +783,32 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(model.atoms['serial_number'][-1]==10754, 
             'Incorrect serial numbering')
 
+        dlist = models[0][1]
+        # this list will have two 'modeled_doms' dictionaries, one for each
+        # symmetric unit
+        self.assertTrue(len(dlist)==2, 'list should have two dictionaries')
+
+        d = dlist[0]    # Take the first dictionary
+        # The only key will be 2, the position of self.domAB1 in the call to
+        # Ranch above. The symtemplate domain is not included
+        self.assertTrue(len(d)==1, 'dictionary should have 1 entry')
+        self.assertTrue(self.domAB2.sequence() == d[2].sequence(), 'sequences \
+            from modeled dom and original are different')
+
     def test_example7(self):
         linker = 'GGGGGGGGGGGGGGGGGGGG'
         call = Ranch(self.dom2, linker, self.domAB1, linker, self.dom2, 
             symmetry='p2', symtemplate=self.domAB1, pool_sym='mix')
         models = call.run()
 
-        model = models[0]
+        self.assertTrue(len(models)==10, "models does not contain 10 elements")
+        self.assertTrue(isinstance(models[0], tuple) and \
+            isinstance(models[0][0], B.PDBModel) and \
+            isinstance(models[0][1], list) and \
+            isinstance(models[0][1][0], dict), 
+            "models contents are not tuples with (PDBModel, [dictionaries])")
+
+        model = models[0][0]
         self.assertTrue(model.lenChains()==2, 'Incorrect number of chains')
         self.assertTrue(len(model.takeChains([0]).sequence())==454 and \
             len(model.takeChains([0]).sequence())==454, 'Incorrect chain length')
@@ -720,12 +818,29 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(model.atoms['serial_number'][-1]==6876, 
             'Incorrect serial numbering')
 
+        dlist = models[0][1]
+        # this list will have two 'modeled_doms' dictionaries, one for each
+        # symmetric unit
+        self.assertTrue(len(dlist)==2, 'list should have two dictionaries')
+
+        d = dlist[0]    # Take the first dictionary
+        # This dict will have no elements, since there are no multichain domains
+        # that could be bound to other chains
+        self.assertTrue(len(d)==0, 'dictionary should be empty')
+
     def test_example10(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
             'GGGGGGGGGGGGGGGGGGGG', self.domAB2, chains = {self.domAB2:'B'})
         models = call.run()
 
-        model = models[0]
+        self.assertTrue(len(models)==10, "models does not contain 10 elements")
+        self.assertTrue(isinstance(models[0], tuple) and \
+            isinstance(models[0][0], B.PDBModel) and \
+            isinstance(models[0][1], list) and \
+            isinstance(models[0][1][0], dict), 
+            "models contents are not tuples with (PDBModel, [dictionaries])")
+
+        model = models[0][0]
         self.assertTrue(model.lenChains()==4, 'Incorrect number of chains')
         self.assertTrue(len(model.takeChains([0]).sequence())==694 and \
             len(model.takeChains([1]).sequence())==218 and \
@@ -738,6 +853,20 @@ class TestRanch(testing.AutoTest):
             'Incorrect residue numbering')
         self.assertTrue(model.atoms['serial_number'][-1]==10754, 
             'Incorrect serial numbering')
+
+        dlist = models[0][1]
+        self.assertTrue(len(dlist)==1, 'list should have a single dict')
+        
+        d = dlist[0]
+        # The d keys will be 0, 2 and 4, as those are the indexes of self.domAB1 and
+        # self.domAB2 in the call to ranch above
+        self.assertTrue(len(d)==3, 'dict should have 2 elements')
+        self.assertTrue(self.domAB1.sequence() == d[0].sequence() and \
+            self.domAB2.sequence() == d[2].sequence() and \
+            self.domAB2.sequence() == d[4].sequence(), 'sequences from \
+            modeled_doms and original input are different')
+        self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz), 'coordinates should be\
+         the same')
 
 
 if __name__ == '__main__':
