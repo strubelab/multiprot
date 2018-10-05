@@ -25,7 +25,7 @@ import re
 from operator import itemgetter
 from errors import *
 from biskit.exe.executor import Executor
-import biskit.tools as T #RG: I prefer uppercase (T) to distinguish variables and modules (SOLVED)
+import biskit.tools as T
 
 #### Helper tool misc functions ####
 
@@ -190,11 +190,14 @@ def extract_embedded(full, embedded):
     # Renumber atoms
     full['serial_number'] = N.arange(1,len(full)+1)
 
-    return full, [modeled_doms]
+    out_symseq = full.sequence()
+
+    return full, [modeled_doms], out_symseq
 
 
 def extract_symmetric(full, symseq, embedded):
     """
+    MODIFY
     Extracts one or more embedded chains from a PDBModel with a symmetric
     structure
     
@@ -229,6 +232,7 @@ def extract_symmetric(full, symseq, embedded):
             modeled_doms.append(extracted[1][0])
 
         r = symunits[0]
+        out_symseq = r.sequence()
 
         for i in range(1,len(symunits)):
             r = r.concat(symunits[i])
@@ -239,7 +243,7 @@ def extract_symmetric(full, symseq, embedded):
     else:
         raise MatchError("Symseq could not be found inside the full domain")
 
-    return r, modeled_doms
+    return r, modeled_doms, out_symseq
 
 
 class Ranch(Executor):
@@ -385,7 +389,7 @@ class Ranch(Executor):
             else:
                 # If there is no symunit provided, it is a single chain symunit
                 # Action: take symunit from symtemplate
-                self.symunit = symtemplate.takeChains([0])
+                self.symunit = symtemplate.takeChains([0]).sequence()
 
         # Path for config file
         self.configpath = [os.path.join(os.path.abspath(
@@ -428,7 +432,7 @@ class Ranch(Executor):
 
                     # Find a way to make the symmetry test only once?
 
-                    self.sequence += self.symunit.sequence()
+                    self.sequence += self.symunit
                     self.doms_in.append(element)
 
                 elif element.lenChains()==1 or self.fixed[i] == 'yes':
@@ -496,7 +500,7 @@ class Ranch(Executor):
 
                     else: #RG: mhm... what is this embedding thing about? ... MAGIC
                         # Only one domain from element is part of the chain
-                        # Action: Embed the domain WITH paired domains into the selected chain
+                        # Action: Embed the paired domains into the selected chain
 
                         # 9
                         # Get chain index
@@ -620,6 +624,8 @@ class Ranch(Executor):
         # where 'full#' is the clean model generated, and 'modeled_doms#' is
         # a dictionary with key:value pairs of
         # *index of domain in chain*:*original domain with new coordinates*
+        # symmetric models have also a out_symseq output for the symmetric unit
+        # sequence
         if self.symtemplate:
             self.result = [extract_symmetric(B.PDBModel(m), self.symseq,
                 self.embedded) for m in m_paths]
@@ -657,16 +663,11 @@ class TestRanch(testing.AutoTest):
     """
 
     TAGS = [ testing.EXE, testing.LONG ]
-
-    #RG: I know this is convenient but very bad idea to execute any code in the class definition body (SOLVED)
     
     #RG: problem 1: this will need to be executed whenever the module is loaded (not just for testing)
     #JG:  - why run it every time the module is loaded?
     #     - these tests take like 37 seconds
     
-    #RG: problem 2: this will break on any other computer except your own (paths :) ) (SOLVED(?))
-
-    #RG: one pattern that should work instead:
     dom1 = None ## define empty class variable
     dom2 = None 
     domAB1 = None
@@ -674,12 +675,7 @@ class TestRanch(testing.AutoTest):
     testpath = None
 
     def setUp(self):
-        # self.DOM1 = DOM1 or B.PDBModel( T.testRoot('ranch/1/2z6o_mod.pdb') )
-        # self.DOM2 = DOM2 or B.PDBModel( T.testRoot('ranch/1/Histone_H3.pdb') )
-        ## this will load the PDBs only once even though setup is run for every test
-        ## doesn't it need the 'self.'DOM1 ?
-        
-        ## Is this enough so it doesn't break in other computers?
+
         self.testpath = self.testpath or \
             os.path.join(os.path.abspath(os.path.dirname(__file__)), 'testdata')
         
@@ -715,6 +711,9 @@ class TestRanch(testing.AutoTest):
         dlist = models[0][1]
         self.assertTrue(len(dlist)==1, 'list should have a single dict')
         self.assertTrue(len(dlist[0])==0, 'dict should have 0 elements')
+
+        out_symseq = models[0][2]
+        self.assertTrue(out_symseq==model.sequence())
 
     def test_example4(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
@@ -756,6 +755,9 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz), 'coordinates should be\
          the same') # As the first model is always fixed
 
+        out_symseq = models[0][2]
+        self.assertTrue(out_symseq==model.sequence())
+
     def test_example5(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
             chains = {self.domAB2: 'A'}, symmetry='p2', symtemplate=self.domAB1, 
@@ -795,6 +797,9 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(self.domAB2.sequence() == d[2].sequence(), 'sequences \
             from modeled dom and original are different')
 
+        out_symseq = models[0][2]
+        self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])
+
     def test_example7(self):
         linker = 'GGGGGGGGGGGGGGGGGGGG'
         call = Ranch(self.dom2, linker, self.domAB1, linker, self.dom2, 
@@ -827,6 +832,9 @@ class TestRanch(testing.AutoTest):
         # This dict will have no elements, since there are no multichain domains
         # that could be bound to other chains
         self.assertTrue(len(d)==0, 'dictionary should be empty')
+
+        out_symseq = models[0][2]
+        self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])
 
     def test_example10(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
@@ -867,6 +875,9 @@ class TestRanch(testing.AutoTest):
             modeled_doms and original input are different')
         self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz), 'coordinates should be\
          the same')
+
+        out_symseq = models[0][2]
+        self.assertTrue(out_symseq==model.sequence())
 
 
 if __name__ == '__main__':
