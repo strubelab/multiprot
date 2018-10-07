@@ -47,62 +47,6 @@ def embed(dom, to_embed):
 
     return first.concat(to_embed,last)
 
-
-def extract_fixed(dom, full):
-    """
-    Extracts one model from another
-    Finds the position of 'dom' inside 'full' comparing the sequence and atom
-    coordinates for each chain in dom, gets the chain index and takes all the
-    chains but the ones selected.
-    
-    :param dom: model of a single or multiple chain domain
-    :type dom: PDBModel
-    :param full: model of a multiple chain domain that contains 'dom'
-    :type full: PDBModel
-
-    :return: model 'full' without dom
-    :type return: PDBModel
-    """
-
-    chains_to_take = list(range(full.lenChains()))
-
-    # Make a list with one PDBModel for each chain in dom
-    # This is to find one chain from dom at a time, in case they are not
-    # together in 'full' ... is this even necessary?
-    doms = [dom.takeChains([i]) for i in range(dom.lenChains())]
-
-    for m in doms:
-
-        start = m.sequence()[:10]  # could use the entire sequence instead
-        
-        if re.search(start, full.sequence()):
-            # If the m sequence is inside full sequence
-            # Action: look for the position of m inside full, and extract
-
-            matches = re.finditer(start, full.sequence())
-            first_res_m = m.res2atomIndices([0])
-            lowm = first_res_m[0]
-            highm = first_res_m[-1]
-            
-            for match in matches:
-                index = match.start()
-                first_res_full = full.res2atomIndices([index])
-
-                lowfull = first_res_full[0]
-                highfull = first_res_full[-1]
-
-                if N.all(m.xyz[lowm:highm+1] == full.xyz[lowfull:highfull+1]):
-                    # If the atoms for the first residue are in the same positions
-                    # Action: remove chain index from chains_to_take
-                    chain_ind = full.atom2chainIndices(first_res_full)
-                    chains_to_take.remove(chain_ind[0])
-                    break
-
-    full = full.takeChains(chains_to_take)
-
-    return full
-
-
 def extract_embedded(full, embedded):
     """
     Extracts one  or more PDBModels from another
@@ -513,9 +457,9 @@ class Ranch(Executor):
                             chain_ind = 0
 
                         m = element.takeChains([chain_ind])
-                        # I could probably replace the extract_fixed() function
-                        # with a element.takeChains([*all but chain_ind*])
-                        to_embed = extract_fixed(m, element)
+                        to_take = list(range(element.lenChains()))
+                        to_take.remove(chain_ind)
+                        to_embed = element.takeChains(to_take)
                         m_emb = embed(m, to_embed)
                         
                         # self.embedded = {dom:(i, m, k),...}

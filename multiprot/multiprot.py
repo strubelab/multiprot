@@ -113,9 +113,10 @@ def create_chains(args):
                     the given arguments (generally from sys.argv) 
     """
     
-    chains = []
+    CHAINS = []     # List of Chain objects, one for each chain in the model
 
     for chain in args.chain:    # For each chain
+        rnames = []     # Arguments for --chain as provided in input
         rdomains = []   # List of PDBModels and strings composing the chain
         rchains = {}    # Dictionary with chain specification for multichain pdbs
         rfixed = []     # List with domains to be fixed in their coordinates
@@ -126,7 +127,7 @@ def create_chains(args):
 
         for i in range(len(chain)):
             # For each component of the chain
-
+            rnames.append(chain[i])
             if chain[i][0][-4:]=='.pdb':     # If the element is a pdb structure
                 pdb = b.PDBModel(chain[i][0])
                 if len(chain[i])==2:  
@@ -154,31 +155,54 @@ def create_chains(args):
                 rdomains.append(chain[i][0])
 
         # dictionary with arguments to be passed on to ranch
-        args_dict = {
+        args = {
             "chains" : rchains, 
             "symmetry" : args.symmetry,
             "symtemplate" : rsymtemp, 
             "pool_sym" : args.poolsym,
-            "fixed" : rfixed 
+            "fixed" : rfixed,
+            "symunit" : None
             }
 
-        chains.append((rdomains, args_dict, False, rmulti))
+        CHAINS.append(Chain(rnames, rdomains, args, False))
         # chains[i] = (domains/linkers, args_dict, already modeled (T/F), 
         #               multichain domains)
         # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for every domain 
         # with a chain specified
         
-    random.shuffle(chains)
-    return chains
+    # Put (any) chain with fixed domains at the beginning, to be modeled first
+    if any([ch.args["fixed"] for ch in CHAINS]):
+        while not CHAINS[0].args["fixed"]:
+            random.shuffle(CHAINS)
+    else:
+        random.shuffle(CHAINS)  # Necessary?
+
+    return CHAINS
+
+class Chain:
+    """
+    Do your chain hang low
+    does it wobble to the floor
+    does it shine in the light
+    """
+    paired_to = None
+    full_chain = []     # List of every symmetric unit in the model
+    modeled_domains = []    # modeled_domains of every symmetric unit
+
+    def __init__(self, names, domains, args, modeled):
+        self.names = names
+        self.domains = domains
+        self.args = args
+        self.modeled = modeled
 
 
 if __name__ == '__main__':
 
     # Parse arguments
     args = parsing()  
-    chains = create_chains(args)
+    CHAINS = create_chains(args)
 
     # Create models
-    # returns list with 10 models
-    call = builder.Builder(chains, args.destination, args.debug)
-    models = call.build()
+    # returns single complete model
+    call = builder.Builder(CHAINS, args.destination, args.debug)
+    model = call.build()
