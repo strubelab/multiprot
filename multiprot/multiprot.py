@@ -86,7 +86,7 @@ def parsing(args=None):
         help='Specify the overall symmetry of the molecules to be produced, i.e. \
         all symmetric [s], all asymmetric [a] or mixed. [m]')
 
-    parser.add_argument('--fixed', '-f', action='append', default=[], nargs='*',
+    parser.add_argument('--fixed', '-f', default=[], nargs='*',
         help='Specify one or more domains to be fixed in their original coordinates.')
 
     parser.add_argument('--destination', '-d', default=os.getcwd(), type=path_exists, 
@@ -161,7 +161,7 @@ def create_chains(args):
             "pool_sym" : args.poolsym,
             "fixed" : rfixed 
             }
-
+        
         chains.append((rdomains, args_dict, False, rmulti))
         # chains[i] = (domains/linkers, args_dict, already modeled (T/F), 
         #               multichain domains)
