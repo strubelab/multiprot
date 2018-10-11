@@ -3,7 +3,7 @@
 #############
 import os
 import biskit as B
-import multiprot as mp
+import multiprot_script as mp
 import multiprot.testing as testing
 
 class TestMultiprot(testing.AutoTest):
