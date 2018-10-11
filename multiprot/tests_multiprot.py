@@ -1,10 +1,10 @@
 #############
 ##  TESTING        
 #############
-import multiprot as mp
-import testing
-import biskit as B
 import os
+import biskit as B
+import multiprot as mp
+import multiprot.testing as testing
 
 class TestMultiprot(testing.AutoTest):
     """

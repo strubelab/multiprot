@@ -23,9 +23,10 @@ import numpy as N
 import tempfile, os
 import re
 from operator import itemgetter
-from errors import *
-from biskit.exe.executor import Executor
-import biskit.tools as T #RG: I prefer uppercase (T) to distinguish variables and modules (SOLVED)
+from biskit.exe import Executor
+import biskit.tools as T
+
+from multiprot.errors import *  ## RG: changed to absolute import
 
 #### Helper tool misc functions ####
 
@@ -593,7 +594,7 @@ class Ranch(Executor):
 #############
 ##  TESTING        
 #############
-import testing
+import multiprot.testing as testing
 
 class TestRanch(testing.AutoTest):
     """

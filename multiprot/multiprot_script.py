@@ -6,8 +6,9 @@ Script that handles command line argument parsing and calls Builder module
 import argparse
 import biskit as b
 import random
-import builder
 import os
+
+import multiprot.builder as builder
 
 # If type=divide does not work, try action='append_const'
 

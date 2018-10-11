@@ -8,13 +8,13 @@ to handle single and multiple chain scenarios
 ##### FOR THE EARLY IMPLEMENTATION OF MULTIPROT, WE WILL ASSUME ONLY ONE CHAIN
 ##### IN THE INPUT
 
-import ranch as R
-import pulchra as P
 import tempfile
 import os, re
 import biskit as B
 import biskit.tools as T
 import numpy as N
+import multiprot.ranch as R
+import multiprot.pulchra as P
 
 class Builder:
     """
@@ -95,7 +95,7 @@ class Builder:
 #############
 ##  TESTING        
 #############
-import testing
+import multiprot.testing as testing
 import multiprot as mp
 
 class TestBuilder(testing.AutoTest):

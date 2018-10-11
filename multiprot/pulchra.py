@@ -11,9 +11,9 @@ http://www.pirx.com/pulchra/index.shtml
 """
 
 import biskit as B
-from biskit.exe.executor import Executor
+from biskit.exe import Executor
 import os
-from errors import *
+from multiprot.errors import *
 
 class Pulchra(Executor):
     """
@@ -60,7 +60,7 @@ class Pulchra(Executor):
 #############
 ##  TESTING        
 #############
-import testing
+import multiprot.testing as testing
 
 class TestPulchra(testing.AutoTest):
     """
