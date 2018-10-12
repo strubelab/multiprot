@@ -11,6 +11,8 @@ This is an early version which only offers support for models where the linker s
 
 ## multiprot installation
 
+The Multiprot installation requires three steps: (i) and (ii) the installation of the two helper applications (Ranch and Pulchra) and then (iii) the setup of the python package. Here are the detailed instructions:
+
 ### Install Ranch helper application
 
 Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team. It was originally a stand-alone program which has now been merged into the [EOM package](https://www.embl-hamburg.de/biosaxs/eom.html). 
@@ -31,7 +33,39 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 
 ### Install Pulchra helper application
 
-to do: describe
+[Pulchra](http://www.pirx.com/pulchra/index.shtml) is a tool developed by Piotr Rotkiewicz. We use it to add backbone and side chain atoms to the models produced by Ranch (which is only generating C-alpha traces).
+
+1. Download source code into a temporary directory. On Linux sytems, the following should work:
+   ```sh
+   cd /tmp
+   wget  http://www.pirx.com/downloads/pulchra_306.tgz
+   tar xvfz pulchra_306.tgz
+   cd pulchra_306
+   cc -O3 -o pulchra pulchra.c pulchra_data.c -lm
+   ```
+   (See pulchra README file for detailed instructions). This generates an executable `pulchra` in the same folder. Test it:
+   ```sh
+   ./pulchra
+   ```
+   ...should give you the pulchra help screen with all the options for running the program.
+2. Move binary to system-wide search path. On Linux sytems, this could be for example:
+   ```sh
+   sudo mv pulchra /usr/local/bin/
+   ```
+3. Test that pulchra can be called system-wide:
+   ```sh
+   cd ~
+   pulchra
+   ```
+   ...should give you the same help screen.
+4. Clean up. You can now remove the source code alltogether or move it to a more appropriate location. For example:
+   ```sh
+   cd /tmp
+   mv pulchra_306 /usr/local/src
+   ```
+   
+Note, you can also leave `pulchra` in any other folder and configure multiprot to find it there. 
+   
 
 ### Install multiprot Python package
 
