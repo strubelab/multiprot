@@ -96,7 +96,7 @@ class Builder:
 ##  TESTING        
 #############
 import multiprot.testing as testing
-import multiprot_script as mp
+import multiprot.multiprot_script as mp
 
 class TestBuilder(testing.AutoTest):
     """
