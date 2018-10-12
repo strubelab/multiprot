@@ -9,12 +9,6 @@ You can produce models combining structured domains, providing the corresponding
 
 This is an early version which only offers support for models where the linker segments are located on a single chain.
 
-
-INSTRUCTIONS FOR THE PACKAGE TO USE IN THE COMMAND LINE
-
-Go to the package directory and run the `multiprot.py` module with the required arguments.
-To see a full list of arguments run `python multiprot.py -h`. Here you can find a few examples, where all the file names are relative to the `multiprot/multiprot` package folder:
-
 ## multiprot installation
 
 ### Install Ranch helper application
@@ -73,9 +67,10 @@ For developers, installation directly from github should work like this:
    ```
    This will run the complete multiprot test suite (can take some minutes). If both Ranch and Pulchra are installed, it should finish without errors.
 
-# Using multiprot
+# Using multiprot on the commandline
 
-Here are some examples for using the package:
+Go to the package directory and run the `multiprot_script.py` script with the required arguments.
+To see a full list of arguments run `python multiprot_script.py -h`. Here you can find a few examples, where all the file names are relative to the `multiprot/multiprot` package folder:
 
 ## Example 1
 Build simple single-chain protein joining two structured domains (2z6o.pdb and histone.pdb) with a disordered linker (GGGGGGGGGG), and saving the resulting models to example1/ directory
