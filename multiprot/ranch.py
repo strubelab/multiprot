@@ -379,7 +379,7 @@ class Ranch(Executor):
                     self.sequence += self.symunit
                     self.doms_in.append(element)
 
-                elif element.lenChains()==1 or self.fixed[i] == 'yes':
+                elif element.lenChains()==1:
                     # If is single chain-domain, 
                     # Or is a domain already modeled/fixed ... 3
 
@@ -519,7 +519,7 @@ class Ranch(Executor):
             f.write(self.sequence)
 
         # Generate n models with no intensities
-        self.args = self.f_seq + ' -q=%s -i' % self.n   #RG: make this another __init__ parameter! (SOLVED)
+        self.args = self.f_seq + ' -q=%s -i' % self.n
 
         if self.symtemplate:
             self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, 

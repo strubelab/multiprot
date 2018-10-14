@@ -42,6 +42,11 @@ def path_exists(s):
         raise argparse.ArgumentTypeError('Invalid destination for output files.')
     return s
 
+def number_models(n):
+    if n<10:
+        return 10
+    else:
+        return n
 
 def parsing(args=None):
     """
@@ -81,6 +86,9 @@ def parsing(args=None):
     parser.add_argument('--symtemplate', '-t', default=[], action='append', 
         help='Which domain will be the symmetry core, in case of symmetry other than\
          p1 specified')
+
+    parser.add_argument('--number', '-n', default=2, help='How many models do you want\
+        to get? (less models = faster)')
 
     parser.add_argument('--poolsym', '-o', default='m', choices=['m', 's', 'a'], 
         help='Specify the overall symmetry of the molecules to be produced, i.e. \
@@ -162,6 +170,7 @@ def create_chains(args):
             "pool_sym" : args.poolsym,
             "fixed" : rfixed,
             "symunit" : None
+            "n" : number_models(args.number)
             }
 
         CHAINS.append(Chain(rnames, rdomains, args, False))
@@ -204,5 +213,5 @@ if __name__ == '__main__':
 
     # Create models
     # returns single complete model
-    call = builder.Builder(CHAINS, args.destination, args.debug)
+    call = builder.Builder(CHAINS, args.destination, args.debug, args.number)
     model = call.build()

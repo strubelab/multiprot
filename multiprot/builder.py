@@ -24,7 +24,7 @@ class Builder:
     
     """
 
-    def __init__(self, chains, dest, debug):
+    def __init__(self, chains, dest, debug, number):
         """
         :param args: Object that contains the arguments parsed from the command line
         :type args: argparse.Namespace object created by calling parser.parse_args()
@@ -33,6 +33,7 @@ class Builder:
 
         self.dest = dest
         self.debug = debug
+        self.num = number
 
     def find_paired(self, i):
         """
@@ -66,57 +67,6 @@ class Builder:
 
         return paired_to
 
-    def pulchra_rebuild(self, models):
-        """
-        Calls pulchra for the chains with CA residues, and cleans the rebuilt
-        models
-
-        :param models:  output list of [(PDBModel, modeled_domains, out_symseq)] 
-                        as produced by Ranch, where for
-                        each symmetric domain (only one if no symmetry) the
-                        first chain is the one containing CA residues that must
-                        be rebuilt
-        :type models:   list
-        :return rebuit: list of 10 PDBModels after the chains with CA residues
-                        were rebuilt by pulchra
-        :type rebuilt:  list
-        """
-        rebuilt = []
-
-        # create temporary folder to write models
-        self.tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + '_')
-        # create names to write pdbs into
-        pdb_paths = [os.path.join(self.tempdir, 'm%02d' % i) for i in range(1,11)]
-
-        for i in range(len(models)):
-
-            # Rebuild only the chains with CA, which is the first one plus its
-            # repetitions in symmetric units
-
-            full = B.PDBModel()
-            m = models[i]
-            to_reb_seq = m.takeChains([0]).sequence()
-            to_reb_len = len(m.takeChains([0]))
-
-            for j in range(m.lenChains()):
-                chain = m.takeChains([j])
-
-                if chain.sequence() == to_reb_seq and len(chain) == to_reb_len:
-                    chname = pdb_paths[i]+'_ch'+str(j)+'.pdb'
-                    chain.writePdb(chname)
-
-                    call = P.Pulchra(chname)
-                    rebuild = call.run()
-                    full = full.concat(B.PDBModel(chname[:-3]+'rebuilt.pdb'))
-
-                else:
-                    full = full.concat(chain)
-        
-            full.addChainId()
-            full['serial_number'] = N.arange(1,len(full)+1)
-            rebuilt.append(full)
-
-        return rebuilt
 
     def extract_fixed(self, dom, full):
         """
@@ -230,26 +180,119 @@ class Builder:
         if not self.debug:
             T.tryRemove(self.tempdir, tree=True)
 
-    def ranch_pulchra(self,chaini):
+    def call_ranch(self, chaini):
         """
-        Builds model with ranch, and rebuilds CA chains with pulchra
+        Builds models with ranch
         """
-
         # Model with ranch
         call = R.Ranch(*chaini.domains, **chaini.args, debug=self.debug)
         models = call.run()
+        return models
 
-        # Rebuild CA chains with pulchra
+    def pulchra_rebuild(self, models):
+        """
+        Calls pulchra for the chains with CA residues, and cleans the rebuilt
+        models
+
+        :param models:  output list of [(PDBModel, modeled_domains, out_symseq)] 
+                        as produced by Ranch, where for
+                        each symmetric domain (only one if no symmetry) the
+                        first chain is the one containing CA residues that must
+                        be rebuilt
+        :type models:   list
+        :return rebuit: list of 10 PDBModels after the chains with CA residues
+                        were rebuilt by pulchra
+        :type rebuilt:  list
+        """
+        rebuilt = []
+
+        for i in range(len(models)):
+
+            # Rebuild only the chains with CA, which is the first one plus its
+            # repetitions in symmetric units
+
+            full = B.PDBModel()
+            m = models[i]
+            to_reb_seq = m.takeChains([0]).sequence()
+            to_reb_len = len(m.takeChains([0]))
+
+            for j in range(m.lenChains()):
+                chain = m.takeChains([j])
+
+                if chain.sequence() == to_reb_seq and len(chain) == to_reb_len:
+                    call = P.Pulchra(chain)
+                    rebuilt = call.run()
+                    full = full.concat(rebuilt)
+
+                else:
+                    full = full.concat(chain)
+        
+            full.addChainId()
+            full['serial_number'] = N.arange(1,len(full)+1)
+            rebuilt.append(full)
+
+        return rebuilt
+
+    def extract_embedded(self,models,emb_seq,chain_seq):
+        """
+        models = list of models to be processed
+        emb_seq = sequence of the embedded chain
+        chain_seq = sequence of the entire modeled chain (that contains emb_seq)
+        symseq = sequence of the symmetric unit
+        """
+        fixed = []
+        ## Make a copy of the model to delete the domains... make similar to
+        ## ranch.extract_embedded()
+        for i in range(len(models)):
+            m = models[i]
+            m
+            r = B.PDBModel()
+            
+            # Search for the sequence of the entire chain containing the emb chain
+            # and take all of it from the model... for each symmetric unit
+            for match in re.finditer(chain_seq,m.sequence())
+                start,end = match.span()
+                ch = m.takeResidues(list(range(start,end)))
+                atom_start = m.resIndex()[start]
+                atom_end = m.resIndex()[end]
+                m.remove(list(range(atom_start,atom_end)))
+
+                # Search for the embedded chain inside, take it and fix the
+                # container chain
+                emb_match = re.search(emb_seq, ch.sequence())
+                if emb_match:
+                    emb_start,emb_end = emb_match.span()
+                    emb_ch = ch.takeResidues(list(range(emb_start,emb_end)))
+                    emb_atomstart = ch.resIndex()[emb_start]
+                    emb_atomend = ch.resIndex()[emb_end]
+                    ch.remove(list(range(emb_atomstart,emb_atomend)))
+
+                    while ch.lenChains() > 1:
+                        ch.mergeChains(0)
+
+                    ch.renumberResidues()
+
+                    # Rebuild chain
+
+
+
+                # Find the index of the previous chains to merge them
+                prev_chain_ind = 
+
+
+    def model(self, i=0, full_model=None, emb=[]):
+
+        if not full_model:
+            full_model = B.PDBModel()
+
+        chaini = self.CHAINS[i]
+
+        models = call_ranch(chaini)
         pdbmodels = [p[0] for p in models]
         rebuilt = pulchra_rebuild(pdbmodels)
 
-        # Replace rebuilt models
-        for i in range(len(models)):
-            models[i][0] = rebuilt[i]
-
-        return models
-
-    def process_symunits(self,chaini, out_symseq, bound_indexes):
+        for j in range(len(rebuilt)):
+            models[j][0] = rebuilt[j]
 
 
     def model(self, i=0, full_model = None, emb=[]):
@@ -262,6 +305,13 @@ class Builder:
             full_model = B.PDBModel()
 
         chaini = self.CHAINS[i]
+
+        models = call_ranch(chaini)[:self.num]  # Take only 'num' number of models
+        pdbmodels = [p[0] for p in models]
+        rebuilt = pulchra_rebuild(pdbmodels)
+
+        for j in range(len(rebuilt)):
+            models[j][0] = rebuilt[j]
 
         models = ranch_pulchra(chaini)
 
