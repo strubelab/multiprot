@@ -4,9 +4,9 @@ Script that handles command line argument parsing and calls Builder module
 """
 
 import argparse
-import biskit as b
+import biskit as B
 import random
-import builder
+import builder as bu
 import os
 
 # If type=divide does not work, try action='append_const'
@@ -39,7 +39,7 @@ def path_exists(s):
     :type s: str
     """
     if not os.path.exists(s):
-        raise argparse.ArgumentTypeError('Invalid destination for output files.')
+        os.makedirs(s)
     return s
 
 def number_models(n):
@@ -68,8 +68,9 @@ def parsing(args=None):
     #        look at exiting methods
 
     parser = argparse.ArgumentParser(usage='', 
-        description='''Build multiple chain-proteins. The arguments can also
-        be read from a file, in which case the file name must have the @ prefix''')
+        description='''Build protein models connecting two or more structured 
+        domains with disordered linkers. Supports modelling of multiple chains 
+        and symmetry.''')
 
     parser.add_argument('--chain', '-c', action='append', nargs='+', type=divide, 
         help='Add a new chain to the model', required=True)
@@ -81,20 +82,20 @@ def parsing(args=None):
     parser.add_argument('--symmetry', '-sym', default='p1',
         help='What kind of symmetry do you wish to have in your molecule. Supported\n\
         symmetries are: p1, p2, ..., p19 (nineteen-fold), p22, p32, p42, p52, p62,\n\
-        ..., p122, p222.', choices=supp_sym)
+        ..., p122, p222.')  # choices=supp_sym
 
-    parser.add_argument('--symtemplate', '-t', default=[], action='append', 
+    parser.add_argument('--symtemplate', '-t', default=[], 
         help='Which domain will be the symmetry core, in case of symmetry other than\
          p1 specified')
 
-    parser.add_argument('--number', '-n', default=2, help='How many models do you want\
-        to get? (less models = faster)')
+    parser.add_argument('--number', '-n', default=3, help='How many models do you want\
+        to produce? (less models = faster)')
 
     parser.add_argument('--poolsym', '-o', default='m', choices=['m', 's', 'a'], 
         help='Specify the overall symmetry of the molecules to be produced, i.e. \
         all symmetric [s], all asymmetric [a] or mixed. [m]')
 
-    parser.add_argument('--fixed', '-f', action='append', default=[], nargs='*',
+    parser.add_argument('--fixed', '-f', default=[], nargs='*',
         help='Specify one or more domains to be fixed in their original coordinates.')
 
     parser.add_argument('--destination', '-d', default=os.getcwd(), type=path_exists, 
@@ -114,8 +115,8 @@ def parsing(args=None):
 
 def create_chains(args):
     """
-    Function that takes the arguments parsed from the command line and
-    returns a list with all input necessary for ranch for each chain
+    Function that takes the arguments parsed from the command line and returns
+    a list of Chain objects with all input necessary for ranch for each chain
 
     :param args:    Namespace object created by calling .parse_args() method on 
                     the given arguments (generally from sys.argv) 
@@ -127,9 +128,11 @@ def create_chains(args):
         rnames = []     # Arguments for --chain as provided in input
         rdomains = []   # List of PDBModels and strings composing the chain
         rchains = {}    # Dictionary with chain specification for multichain pdbs
+        rchains_names = {}  # Same as rchains above, but the keys are names instead
+                            # of PDBModels
         rfixed = []     # List with domains to be fixed in their coordinates
         rsymtemp = None     # symtemplate
-        rmulti = []     # list of tuples [('i_1234.pdb', 'A'), ... ] for each domain
+        # rmulti = []     # list of tuples [('i_1234.pdb', 'A'), ... ] for each domain
                         # with a chain specified, where i is the domain number
                         # inside the chain
 
@@ -137,14 +140,15 @@ def create_chains(args):
             # For each component of the chain
             rnames.append(chain[i])
             if chain[i][0][-4:]=='.pdb':     # If the element is a pdb structure
-                pdb = b.PDBModel(chain[i][0])
+                pdb = B.PDBModel(chain[i][0])
                 if len(chain[i])==2:  
                     # If the chain to be taken from the domain is specified, e.g.
                     # # ABCD.pdb:A --> ('ABCD.pdb','A')
                     rchains[pdb] = chain[i][1]
+                    rchains_names[chain[i][0]] = chain[i][1]
                     
                     # Append domain index to deal with repeated pdb names
-                    rmulti.append((str(i)+'_'+chain[i][0], chain[i][1]))
+                    # rmulti.append((str(i)+'_'+chain[i][0], chain[i][1]))
                     # CHANGE THIS TO WORK WITH DUPLICATED PDB NAMES
                     # MAYBE APPEND AN INDEX ?
                     # SYMTEMPLATE PDB CANNOT BE DUPLICATED
@@ -152,6 +156,11 @@ def create_chains(args):
                 if chain[i][0] in args.fixed:  
                     # If domain will be fixed
                     rfixed.append(pdb)
+
+                    # Remove the pdb name from args.fixed so it won't be duplicated
+                    # if it is in multiple chains
+                    # Should I keep a copy of the original args.fixed?
+                    args.fixed.remove(chain[i][0])
                 
                 if chain[i][0] in args.symtemplate:  
                     # If the domain is symtemplate ... THERE CAN ONLY BE ONE
@@ -163,55 +172,96 @@ def create_chains(args):
                 rdomains.append(chain[i][0])
 
         # dictionary with arguments to be passed on to ranch
-        args = {
+        args_dict = {
             "chains" : rchains, 
             "symmetry" : args.symmetry,
             "symtemplate" : rsymtemp, 
             "pool_sym" : args.poolsym,
             "fixed" : rfixed,
-            "symunit" : None
+            "symunit" : None,
             "n" : number_models(args.number)
             }
 
-        CHAINS.append(Chain(rnames, rdomains, args, False))
+        CHAINS.append(Chain(rnames, rdomains, args_dict, False, rchains_names))
         # chains[i] = (domains/linkers, args_dict, already modeled (T/F), 
         #               multichain domains)
         # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for every domain 
         # with a chain specified
         
-    # Put (any) chain with fixed domains at the beginning, to be modeled first
+    # Put any chain with fixed domains at the beginning, to be modeled first
     if any([ch.args["fixed"] for ch in CHAINS]):
         while not CHAINS[0].args["fixed"]:
             random.shuffle(CHAINS)
-    else:
-        random.shuffle(CHAINS)  # Necessary?
+    # else:
+        # For testing, it is necessary to remove shuffling of chains
+        # random.shuffle(CHAINS)  # Necessary?
 
     return CHAINS
+
+def write_pdbs(models, dest, pref='mp'):
+    '''
+    Writes the pdbmodels to the specified destination
+    '''
+
+    f_out = [os.path.join(dest,pref+'_%02d.pdb' % i) for i in range(1,len(models)+1)]
+
+    for i in range(len(models)):
+        models[i].writePdb(f_out[i])
+
+    return None
 
 class Chain:
     """
     Do your chain hang low
-    does it wobble to the floor
-    does it shine in the light
+    do it wobble to the floor
+    do it shine in the light
+    is it platinum is it gold
     """
-    paired_to = None
-    full_chain = []     # List of every symmetric unit in the model
-    modeled_domains = []    # modeled_domains of every symmetric unit
 
-    def __init__(self, names, domains, args, modeled):
+    def __init__(self, names, domains, args, modeled, chains_names):
+        # Super weird behaviour when putting these variabels in the init arguments
+        # paired_to=[],modeled_domains=[],emb_seq=None,container_seq=None,
+        # jdomains={},testvar=[]):
         self.names = names
         self.domains = domains
         self.args = args
         self.modeled = modeled
+        self.chains_names = chains_names
+        self.paired_to = []
+        # modeled_domains of every symmetric unit
+        self.modeled_domains = []
+        self.emb_seq = None
+        self.container_seq = None
+
+        # Domains with new coordinates for non-symmetric structures
+        self.new_domains = ['']*len(self.names)
+        # self.testvar= testvar
+        
+        # Dictionary with the modeled symmetric domains of the current chain. 
+        # Similar to modeled_domains, but this only contains the
+        # part of the domain belonging to this chain, i.e. what was removed from
+        # self.full_chains at the end of builder.replace_modeled()
+        # These domains will be used to embed the symmetric units in builder.run()
+        # The dictionary will be of the form {name_index:[domains]}, where
+        # nameindex is the place or order of the domain in the chain, and [domains]
+        # is a list with the symmetric domains' coordinates (only 1 if there is no
+        # symmetry)
+        self.jdomains = {}
+
+
 
 
 if __name__ == '__main__':
 
     # Parse arguments
-    args = parsing()  
+    args = parsing()
     CHAINS = create_chains(args)
 
     # Create models
-    # returns single complete model
-    call = builder.Builder(CHAINS, args.destination, args.debug, args.number)
-    model = call.build()
+    # In the current implementation it only returns one model
+    build = bu.Builder(CHAINS,args.debug,args.number,args.destination)
+    
+    model = build.run()
+
+    # Remove the [] when changing to more than one model
+    write_pdbs([model],args.destination)
