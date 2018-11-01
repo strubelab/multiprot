@@ -11,6 +11,16 @@ Tria, G., Mertens, H. D. T., Kachala, M. & Svergun, D. I. (2015) Advanced
     ensemble modelling of flexible macromolecules using X-ray solution scattering. 
     IUCrJ 2, 207-217
 
+
+
+Calling and running this wrapper returns a tuple of the form 
+(full, [modeled_doms], out_symseq), where: 
+-   'full' is the model requested with the linkers as CA atoms
+-   '[modeled_doms]' is a list of dictionaries with the multiple-chain domains' 
+    new coordinates, one for each symmetric unit
+-   'out_symseq' is the sequence of the symmetric unit, or the sequence of the 
+    entire model if there is no symmetry
+
 """
 
 ## STILL NEED TO WRITE CODE TO TEST AND HANDLE INCORRECT INPUT, AND WHAT TO DO
@@ -96,16 +106,19 @@ def extract_embedded(full, embedded):
         if full.sequence()[i_start:i_end] == dom.sequence() and \
             m_seq == m.sequence():
             
-            embedded = full.takeResidues(list(range(i_start, i_end)))
-            embedded.atoms['chain_id'] = dom.atoms['chain_id']  # restore chain ids
+            emb = full.takeResidues(list(range(i_start, i_end)))
+            # Restore chain ids and residue numbers
+            emb.atoms['chain_id'] = dom.atoms['chain_id']
+            emb.atoms['residue_number'] = dom.atoms['residue_number']   
 
             m_new = full.takeResidues(list(range(*m_first))).concat(
                 full.takeResidues(list(range(*m_last))), newChain=False)
             m_new.atoms['chain_id'] = m.atoms['chain_id']
-            m_new = m_new.concat(embedded)
+            m_new.atoms['residue_number'] = m.atoms['residue_number']
+            m_new = m_new.concat(emb)
             modeled_doms[value[2]] = m_new
             
-            r = r.concat(embedded)
+            r = r.concat(emb)
             
             emb_ind.append((i_start, i_end))
         else:
@@ -287,10 +300,6 @@ class Ranch(Executor):
 
         #TODO: Add possibility to input more options for ranch
         
-        # Create temporary folder for pdbs and sequence
-        #RG: Executor can do that for you if you set `tempdir` parameter to True or to a custom name
-        #JG:  I needed to create this before calling Executor.__init__(...) to make 
-        #     another folder inside (line 318)
         tempdir = tempfile.mkdtemp( '', self.__class__.__name__.lower() + '_', 
             T.tempDir() )
 
@@ -442,7 +451,7 @@ class Ranch(Executor):
 
                         break
 
-                    else: #RG: mhm... what is this embedding thing about? ... MAGIC
+                    else: 
                         # Only one domain from element is part of the chain
                         # Action: Embed the paired domains into the selected chain
 
@@ -477,7 +486,6 @@ class Ranch(Executor):
         ####### DIAGRAM FINISHES... REACHED STEP 9 #########
 
             else:  
-                #RG: I think it's considered better to raise your own custom errors rather than python built-in (SOLVED)
                 raise InputError(
                     'The *domains arguments must be either strings or PDBModels.')
 
@@ -607,10 +615,6 @@ class TestRanch(testing.AutoTest):
     """
 
     TAGS = [ testing.EXE, testing.LONG ]
-    
-    #RG: problem 1: this will need to be executed whenever the module is loaded (not just for testing)
-    #JG:  - why run it every time the module is loaded?
-    #     - these tests take like 37 seconds
     
     dom1 = None ## define empty class variable
     dom2 = None 
