@@ -51,30 +51,33 @@ class Pulchra(Executor):
         """
         self.model = model
 
-        self.tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + '_')
-        self.pdb_path = os.path.join(self.tempdir, 'model.pdb')
-        self.rb_path = self.pdb_path[:-3]+'rebuilt.pdb'
+        tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + '_',
+            T.tempDir())
+        
+        pdb_path = os.path.join(tempdir, 'model.pdb')
+        self.rb_path = pdb_path[:-3]+'rebuilt.pdb'
 
-        self.model.writePdb(self.pdb_path)
+        self.model.writePdb(pdb_path)
 
-        super().__init__('pulchra', strict=False, args=self.pdb_path, **kw)
+        super().__init__('pulchra', tempdir=tempdir, strict=False, 
+            args=pdb_path, **kw)
 
-        def finish(self):
-            """
-            Overrides Executor method
-            """
+    def finish(self):
+        """
+        Overrides Executor method
+        """
 
-            rebuilt = B.PDBModel(self.rb_path)
-            rebuilt.renumberResidues()
+        rebuilt = B.PDBModel(self.rb_path)
+        rebuilt.renumberResidues()
 
-            self.result = rebuilt
+        self.result = rebuilt
 
-        def cleanup(self):
-            """
-            Delete temporary files
-            """
-            if not self.debug:
-                T.tryRemove(self.tempdir, tree=True)
+    def cleanup(self):
+        """
+        Delete temporary files
+        """
+        if not self.debug:
+            T.tryRemove(self.tempdir, tree=True)
 
 
 
@@ -101,13 +104,12 @@ class TestPulchra(testing.AutoTest):
         """
         Test to confirm that .rebuilt.pdb file was created after running pulchra
         """
-
-        call = Pulchra(self.testpdb)
+        pdb = B.PDBModel(self.testpdb)
+        
+        call = Pulchra(pdb)
         rebuilt = call.run()
         
-        f_out = self.testpdb[:-3]+'rebuilt.pdb'
-        self.assertTrue(os.path.exists(f_out), '.rebuilt.pdb file not created')
-        os.remove(f_out)
+        self.assertTrue(isinstance(rebuilt,B.PDBModel))
 
 
 if __name__ == '__main__':
