@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Script that handles command line argument parsing and calls Builder module
 
