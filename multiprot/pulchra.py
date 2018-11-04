@@ -12,7 +12,8 @@ http://www.pirx.com/pulchra/index.shtml
 
 import biskit as B
 from biskit.exe.executor import Executor
-import os
+import os, tempfile
+import biskit.tools as T
 from errors import *
 
 class Pulchra(Executor):
@@ -30,7 +31,7 @@ class Pulchra(Executor):
 
     """
 
-    def __init__(self, f_in, **kw):
+    def __init__(self, model, **kw):
         
         """
         Create the variables that Pulchra needs to run
@@ -48,12 +49,35 @@ class Pulchra(Executor):
                         log      -  biskit.LogFile, program log (None->STOUT)
                                         (default:None)
         """
-        self.f_in = f_in
+        self.model = model
 
-        if not os.path.exists(self.f_in):
-            raise InputError('Invalid PDB file path.')
+        tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + '_',
+            T.tempDir())
+        
+        pdb_path = os.path.join(tempdir, 'model.pdb')
+        self.rb_path = pdb_path[:-3]+'rebuilt.pdb'
 
-        super().__init__('pulchra', strict=False, args=self.f_in, **kw)
+        self.model.writePdb(pdb_path)
+
+        super().__init__('pulchra', tempdir=tempdir, strict=False, 
+            args=pdb_path, **kw)
+
+    def finish(self):
+        """
+        Overrides Executor method
+        """
+
+        rebuilt = B.PDBModel(self.rb_path)
+        rebuilt.renumberResidues()
+
+        self.result = rebuilt
+
+    def cleanup(self):
+        """
+        Delete temporary files
+        """
+        if not self.debug:
+            T.tryRemove(self.tempdir, tree=True)
 
 
 
@@ -80,13 +104,12 @@ class TestPulchra(testing.AutoTest):
         """
         Test to confirm that .rebuilt.pdb file was created after running pulchra
         """
-
-        call = Pulchra(self.testpdb)
+        pdb = B.PDBModel(self.testpdb)
+        
+        call = Pulchra(pdb)
         rebuilt = call.run()
         
-        f_out = self.testpdb[:-3]+'rebuilt.pdb'
-        self.assertTrue(os.path.exists(f_out), '.rebuilt.pdb file not created')
-        os.remove(f_out)
+        self.assertTrue(isinstance(rebuilt,B.PDBModel))
 
 
 if __name__ == '__main__':
