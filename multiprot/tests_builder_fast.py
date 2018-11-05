@@ -1,10 +1,10 @@
 #############
 ##  TESTING        
 #############
-import multiprot as mp
-import testing
+import multiprot.parseChains as C
+import multiprot.testing as testing
 import biskit as B
-import builder as bu
+import multiprot.builder as bu
 import os, tempfile
 
 class TestBuilder(testing.AutoTest):
@@ -94,33 +94,33 @@ class TestBuilder(testing.AutoTest):
                 self.linker+' '+self.mono3
 
         # Create Chain objects and Builder instance
-        args1 = mp.parsing(self.argstring1.split())
-        CHAINS1 = mp.create_chains(args1)
+        args1 = C.parsing(self.argstring1.split())
+        CHAINS1 = C.create_chains(args1)
         self.builder1 = bu.Builder(CHAINS1,args1.debug,args1.number,
             args1.destination)
 
-        args4 = mp.parsing(self.argstring4.split())
-        CHAINS4 = mp.create_chains(args4)
+        args4 = C.parsing(self.argstring4.split())
+        CHAINS4 = C.create_chains(args4)
         self.builder4 = bu.Builder(CHAINS4,args4.debug,args4.number,
             args4.destination)
 
-        args5 = mp.parsing(self.argstring5.split())
-        CHAINS5 = mp.create_chains(args5)
+        args5 = C.parsing(self.argstring5.split())
+        CHAINS5 = C.create_chains(args5)
         self.builder5 = bu.Builder(CHAINS5,args5.debug,args5.number,
             args5.destination)
 
-        args2ch = mp.parsing(self.argstring2ch.split())
-        CHAINS2ch = mp.create_chains(args2ch)
+        args2ch = C.parsing(self.argstring2ch.split())
+        CHAINS2ch = C.create_chains(args2ch)
         self.builder2ch = bu.Builder(CHAINS2ch,args2ch.debug,args2ch.number,
             args2ch.destination)
 
-        args2chfixed = mp.parsing(self.argstring2chfixed.split())
-        CHAINS2chfixed = mp.create_chains(args2chfixed)
+        args2chfixed = C.parsing(self.argstring2chfixed.split())
+        CHAINS2chfixed = C.create_chains(args2chfixed)
         self.builder2chfixed = bu.Builder(CHAINS2chfixed,args2chfixed.debug,
             args2chfixed.number,args2chfixed.destination)
 
-        args3ch = mp.parsing(self.argstring3ch.split())
-        CHAINS3ch = mp.create_chains(args3ch)
+        args3ch = C.parsing(self.argstring3ch.split())
+        CHAINS3ch = C.create_chains(args3ch)
         self.builder3ch = bu.Builder(CHAINS3ch,args3ch.debug,args3ch.number,
             args3ch.destination)
 
