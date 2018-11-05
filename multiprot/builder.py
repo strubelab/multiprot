@@ -654,12 +654,24 @@ class Builder:
     #     return full
 
 
+    def write_pdbs(self, models, dest, pref='mp'):
+        '''
+        Writes the pdbmodels to the specified destination
+        '''
+
+        f_out = [os.path.join(dest,pref+'_%02d.pdb' % i) for i in range(1,len(models)+1)]
+
+        for i in range(len(models)):
+            models[i].writePdb(f_out[i])
+
+        return None    
+
 
 #############
 ##  TESTING        
 #############
 import multiprot.testing as testing
-import multiprot.multiprot_script as mp
+import multiprot.parseChains as C
 
 class TestBuilder(testing.AutoTest):
     """
@@ -698,66 +710,60 @@ class TestBuilder(testing.AutoTest):
 
         ## ADD TEST WITH 3 CHAINS AND SYMMETRY
     
-    # # PASSED
-    # def test_example1(self):
-    #     '''
-    #     Single chain example
-    #     '''
-    #     testdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_example1_')
+    # PASSED
+    def test_example1(self):
+        '''
+        Single chain example
+        '''
+        # testdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
+        #     '_example1_')
 
-    #     argstring = '--chain '+self.mono1+' '+self.linker+' '+self.mono2+\
-    #         ' --destination '+testdir
+        argstring = '--chain '+self.mono1+' '+self.linker+' '+self.mono2# +\
+            # ' --destination '+testdir ... to write the models to disk
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
-    #     build = Builder(CHAINS,args.debug,args.number,args.destination)
+        args = C.parsing(argstring.split())
+        CHAINS = C.create_chains(args)
+        build = Builder(CHAINS,args.debug,args.number,args.destination)
 
-    #     model = build.run()
+        model = build.run()
 
-    #     self.assertTrue(model.lenChains()==1)
-    #     #self.assertTrue(len(model)==2336)
+        self.assertTrue(model.lenChains()==1)
+        #self.assertTrue(len(model)==2336)
 
-    #     mp.write_pdbs([model],testdir)
+        # build.write_pdbs([model],testdir)
 
-    # # # # PASSED
-    # def test_example4(self):
-    #     '''
-    #     Single chain with two multiple-chain domains
-    #     '''
-    #     testdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_example4_')
+    # PASSED
+    def test_example4(self):
+        '''
+        Single chain with two multiple-chain domains
+        '''
         
-    #     argstring = \
-    #         '--chain '+self.dimer1+':A '+self.linker+' '+self.dimer2+':B '+\
-    #         '--fixed '+self.dimer1+' --destination '+testdir
+        argstring = \
+            '--chain '+self.dimer1+':A '+self.linker+' '+self.dimer2+':B '+\
+            '--fixed '+self.dimer1
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
-    #     build = Builder(CHAINS,args.debug,args.number,args.destination)
+        args = C.parsing(argstring.split())
+        CHAINS = C.create_chains(args)
+        build = Builder(CHAINS,args.debug,args.number,args.destination)
 
-    #     model = build.run()
+        model = build.run()
 
-    #     self.assertTrue(model.lenChains()==3)
-    #     #self.assertTrue(len(model)==7326)
+        self.assertTrue(model.lenChains()==3)
+        #self.assertTrue(len(model)==7326)
 
-    #     mp.write_pdbs([model],testdir)
 
-    # # # # PASSED
+    # # PASSED
     # def test_example5(self):
     #     '''
     #     Single chain with symmetry
     #     '''
-    #     testdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_example5_')
 
     #     argstring = \
     #         '--chain '+self.dimer1+' '+self.linker+' '+self.dimer2+':A '+\
-    #         '--symmetry p2 --symtemplate '+self.dimer1+' --poolsym s'+\
-    #         ' --destination '+testdir
+    #         '--symmetry p2 --symtemplate '+self.dimer1+' --poolsym s'
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
@@ -765,7 +771,6 @@ class TestBuilder(testing.AutoTest):
     #     self.assertTrue(model.lenChains()==4)
     #     #self.assertTrue(len(model)==11080)
 
-    #     mp.write_pdbs([model],testdir)
 
     # FAILED
     # def test_2Chainz(self):
@@ -776,25 +781,21 @@ class TestBuilder(testing.AutoTest):
     #     connect them in the second chain, i.e. the model of the first chain might
     #     take them too far apart from each other
     #     '''
-    #     testdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_2ch_')
 
     #     argstring = \
     #         '--chain '+self.dimer1+':A '+self.linker+' '+self.dimer3+':A '+\
     #         self.linker+' '+self.dimer2+':A '+\
     #         '--chain '+self.dimer1+':B '+self.linker+' '+self.dimer3+':B '+\
-    #         self.linker+' '+self.dimer2+':B'+\
-    #         ' --destination '+testdir
+    #         self.linker+' '+self.dimer2+':B'
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==2)
 
-    #     mp.write_pdbs([model],testdir)
 
 
     # # PASSED
@@ -802,19 +803,16 @@ class TestBuilder(testing.AutoTest):
     #     '''
     #     Same as 2Chainz but the domains are fixed in their coordinates
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_2chfixed_')
 
     #     argstring = \
     #         '--chain '+self.dimer1+':A '+self.linker+' '+self.dimer3+':A '+\
     #         self.linker+' '+self.dimer2+':A '+\
     #         '--chain '+self.dimer1+':B '+self.linker+' '+self.dimer3+':B '+\
     #         self.linker+' '+self.dimer2+':B '+\
-    #         '--fixed '+self.dimer1+' '+self.dimer2+' '+self.dimer3+\
-    #         ' --destination '+tempdir
+    #         '--fixed '+self.dimer1+' '+self.dimer2+' '+self.dimer3
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
@@ -822,83 +820,73 @@ class TestBuilder(testing.AutoTest):
     #     self.assertTrue(model.lenChains()==2)
     #     self.assertTrue(len(model)==10140)
 
-    #     mp.write_pdbs([model],tempdir)
-
 
     # PASSED
     # def test_symp2(self):
     #     '''
     #     Test with symmetry
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_sym_')
 
     #     # There is no need to specify chain for the symmetric core
     #     argstring = \
     #         '--chain '+self.dimer1+' '+self.linker+' '+self.mono1+\
     #         ' --symmetry p2 --symtemplate '+self.dimer1+\
-    #         ' --poolsym s --destination '+tempdir
+    #         ' --poolsym s'
 
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==2)
 
-    #     mp.write_pdbs([model],tempdir)
 
     # PASSED
-    # def test_symp3(self):
-    #     '''
-    #     Test with symmetry
-    #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_symp3_')
+    def test_symp3(self):
+        '''
+        Test with symmetry
+        '''
 
-    #     # There is no need to specify chain for the symmetric core
-    #     argstring = \
-    #         '--chain '+self.trimer+' '+self.linker+' '+self.mono1+\
-    #         ' --symmetry p3 --symtemplate '+self.trimer+\
-    #         ' --poolsym s --destination '+tempdir
+        # There is no need to specify chain for the symmetric core
+        argstring = \
+            '--chain '+self.trimer+' '+self.linker+' '+self.mono1+\
+            ' --symmetry p3 --symtemplate '+self.trimer+\
+            ' --poolsym s'
 
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
-    #     build = Builder(CHAINS,args.debug,args.number,args.destination)
+        args = C.parsing(argstring.split())
+        CHAINS = C.create_chains(args)
+        build = Builder(CHAINS,args.debug,args.number,args.destination)
 
-    #     model = build.run()
+        model = build.run()
 
-    #     self.assertTrue(model.lenChains()==3)
+        self.assertTrue(model.lenChains()==3)
 
-    #     mp.write_pdbs([model],tempdir)
 
     # NEED STRUCTURE WITH CHAINS EXACTLY EQUAL
+    # FAILED
     # def test_symp4(self):
     #     '''
     #     Test with symmetry
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_symp4_')
 
     #     # There is no need to specify chain for the symmetric core
     #     argstring = \
     #         '--chain '+self.tetramer+' '+self.linker+' '+self.mono1+\
     #         ' --symmetry p4 --symtemplate '+self.tetramer+\
-    #         ' --poolsym s --destination '+tempdir
+    #         ' --poolsym s'
 
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==4)
 
-    #     mp.write_pdbs([model],tempdir)
 
 
     # PASSED
@@ -906,8 +894,6 @@ class TestBuilder(testing.AutoTest):
     #     '''
     #     Example 1 with three chains, using a trimer
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_4ch1_')
 
     #     argstring = \
     #         '--chain '+self.mono1+' '+self.linker+' '+self.tetramer+':A '+\
@@ -917,18 +903,15 @@ class TestBuilder(testing.AutoTest):
     #         ' --chain '+self.mono3+' '+self.linker+' '+self.tetramer+':C '+\
     #         self.linker+' '+self.mono3+\
     #         ' --chain '+self.mono2+' '+self.linker+' '+self.tetramer+':D '+\
-    #         self.linker+' '+self.mono3+\
-    #         ' --destination '+tempdir
+    #         self.linker+' '+self.mono3
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==4)
-
-    #     mp.write_pdbs([model],tempdir)
 
 
     # PASSED
@@ -936,8 +919,6 @@ class TestBuilder(testing.AutoTest):
     #     '''
     #     Example 1 with three chains, using a trimer
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_4ch2_')
 
     #     argstring = \
     #         '--chain '+self.tetramer+':A '+\
@@ -947,43 +928,40 @@ class TestBuilder(testing.AutoTest):
     #         ' --chain '+self.tetramer+':C '+\
     #         self.linker+' '+self.mono3+\
     #         ' --chain '+self.tetramer+':D '+\
-    #         self.linker+' '+self.mono3+\
-    #         ' --destination '+tempdir
+    #         self.linker+' '+self.mono3
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==4)
 
-    #     mp.write_pdbs([model],tempdir)
+
+    # def test_2Chainzsym(self):
+    #     '''
+    #     Test with two chains and three-fold symmetry
+    #     '''
+    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
+    #         '_2chsym_')
+
+    #     # There is no need to specify chain for the symmetric core
+    #     argstring = \
+    #         '--chain '+self.trimer+' '+self.linker+' '+self.dimer1+':A '+\
+    #         '--chain '+self.mono1+' '+self.linker+' '+self.dimer1+':B '+\
+    #         self.linker+' '+self.mono2+\
+    #         ' --symmetry p3 --symtemplate '+self.trimer+\
+    #         ' --poolsym s'
 
 
-    def test_2Chainzsym(self):
-        '''
-        Test with two chains and three-fold symmetry
-        '''
-        tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-            '_2chsym_')
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
+    #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
-        # There is no need to specify chain for the symmetric core
-        argstring = \
-            '--chain '+self.trimer+' '+self.linker+' '+self.dimer1+':A '+\
-            '--chain '+self.mono1+' '+self.linker+' '+self.dimer1+':B '+\
-            self.linker+' '+self.mono2+\
-            ' --symmetry p3 --symtemplate '+self.trimer+\
-            ' --poolsym s --destination '+tempdir
-
-
-        args = mp.parsing(argstring.split())
-        CHAINS = mp.create_chains(args)
-        build = Builder(CHAINS,args.debug,args.number,args.destination)
-
-        model = build.run()
-        mp.write_pdbs([model],tempdir)
-        self.assertTrue(model.lenChains()==6)
+    #     model = build.run()
+    #     # build.write_pdbs([model],tempdir)
+    #     self.assertTrue(model.lenChains()==6)
 
 
     # # PASSED
@@ -991,58 +969,48 @@ class TestBuilder(testing.AutoTest):
     #     '''
     #     Example 1 with three chains, using a trimer
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_3ch1_')
 
     #     argstring = \
     #         '--chain '+self.trimer+':A '+self.linker+' '+self.mono1+\
     #         ' --chain '+self.trimer+':B '+self.linker+' '+self.mono2+\
-    #         ' --chain '+self.trimer+':C '+self.linker+' '+self.mono3+\
-    #         ' --destination '+tempdir
+    #         ' --chain '+self.trimer+':C '+self.linker+' '+self.mono3
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==3)
 
-    #     mp.write_pdbs([model],tempdir)
 
-    # # PASSED
-    # def test_3ch2(self):
-    #     '''
-    #     Example 2 with three chains
-    #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_example3ch2_')
+    # PASSED
+    def test_3ch2(self):
+        '''
+        Example 2 with three chains
+        '''
 
-    #     argstring = \
-    #         '--chain '+self.mono1+' '+self.linker+' '+self.dimer1+':A '+\
-    #         self.linker+' '+self.mono2+\
-    #         ' --chain '+self.dimer1+':B '+self.linker+' '+self.dimer2+':A'+\
-    #         ' --chain '+self.mono1+' '+self.linker+' '+self.dimer2+':B '+\
-    #         self.linker+' '+self.mono2+\
-    #         ' --destination '+tempdir
+        argstring = \
+            '--chain '+self.mono1+' '+self.linker+' '+self.dimer1+':A '+\
+            self.linker+' '+self.mono2+\
+            ' --chain '+self.dimer1+':B '+self.linker+' '+self.dimer2+':A'+\
+            ' --chain '+self.mono1+' '+self.linker+' '+self.dimer2+':B '+\
+            self.linker+' '+self.mono2
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
-    #     build = Builder(CHAINS,args.debug,args.number,args.destination)
+        args = C.parsing(argstring.split())
+        CHAINS = C.create_chains(args)
+        build = Builder(CHAINS,args.debug,args.number,args.destination)
 
-    #     model = build.run()
+        model = build.run()
 
-    #     self.assertTrue(model.lenChains()==3)
+        self.assertTrue(model.lenChains()==3)
 
-    #     mp.write_pdbs([model],tempdir)
 
     # # PASSED
     # def test_3ch3(self):
     #     '''
-    #     Example 1 with three chains, using a trimer
+    #     Example 3 with three chains, using a trimer
     #     '''
-    #     tempdir = tempfile.mkdtemp('', self.__class__.__name__.lower() + \
-    #         '_3ch1_')
 
     #     argstring = \
     #         '--chain '+self.mono1+' '+self.linker+' '+self.trimer+':A '+\
@@ -1053,15 +1021,13 @@ class TestBuilder(testing.AutoTest):
     #         self.linker+' '+self.mono3+\
     #         ' --destination '+tempdir
 
-    #     args = mp.parsing(argstring.split())
-    #     CHAINS = mp.create_chains(args)
+    #     args = C.parsing(argstring.split())
+    #     CHAINS = C.create_chains(args)
     #     build = Builder(CHAINS,args.debug,args.number,args.destination)
 
     #     model = build.run()
 
     #     self.assertTrue(model.lenChains()==3)
-
-    #     mp.write_pdbs([model],tempdir)
 
 
 if __name__ == '__main__':
