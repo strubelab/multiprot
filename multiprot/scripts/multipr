@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+'''
+Executable script that will call the necessary methods to create the models
+'''
+
+import sys
+import multiprot.parseChains as C
+import multiprot.builder as bu
+
+# Parse arguments
+args = C.parsing(sys.argv[1:])
+CHAINS = C.create_chains(args)
+
+# Create models
+# In the current implementation it only returns one model
+build = bu.Builder(CHAINS,args.debug,args.number,args.destination)
+
+model = build.run()
+
+# Remove the [] when changing to more than one model
+build.write_pdbs([model],args.destination)
