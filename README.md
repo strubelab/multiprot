@@ -9,11 +9,102 @@ You can produce models combining structured domains, providing the corresponding
 
 This is an early version which only offers support for models where the linker segments are located on a single chain.
 
+## multiprot installation
 
-INSTRUCTIONS FOR THE PACKAGE TO USE IN THE COMMAND LINE
+The Multiprot installation requires three steps: (i) and (ii) the installation of the two helper applications (Ranch and Pulchra) and then (iii) the setup of the python package. Here are the detailed instructions:
 
-Go to the package directory and run the `multiprot.py` module with the required arguments.
-To see a full list of arguments run `python multiprot.py -h`. Here you can find a few examples, where all the file names are relative to the `multiprot/multiprot` package folder:
+### Install Ranch helper application
+
+Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team. It was originally a stand-alone program which has now been merged into the [EOM package](https://www.embl-hamburg.de/biosaxs/eom.html). 
+
+1. Create a user account at [ATSAS website account registration](https://www.embl-hamburg.de/biosaxs/atsas-online/register.php)
+2. Download ATSAS package for your architecture from [ATSAS download area](https://www.embl-hamburg.de/biosaxs/atsas-online/download.php)
+3. Install package. E.g. for Debian or Ubuntu:
+    ```sh
+    sudo apt install ./ATSAS-2.8.4-1_amd64.deb
+    ```
+    This will, among other tools, put the `ranch` command into your search path. Open a terminal and verify that the program is correctly installed. Typing the `ranch` command should open the interactive ranch prompt:
+    ```sh
+    ~> ranch
+    *******  ------------------------------------------------------  *******
+    *******     RANCH - version 2.2 - (r10552)                    ********
+    ...
+    ```
+
+### Install Pulchra helper application
+
+[Pulchra](http://www.pirx.com/pulchra/index.shtml) is a tool developed by Piotr Rotkiewicz. We use it to add backbone and side chain atoms to the models produced by Ranch (which is only generating C-alpha traces).
+
+1. Download source code into a temporary directory. On Linux sytems, the following should work:
+   ```sh
+   cd /tmp
+   wget  http://www.pirx.com/downloads/pulchra_306.tgz
+   tar xvfz pulchra_306.tgz
+   cd pulchra_306
+   cc -O3 -o pulchra pulchra.c pulchra_data.c -lm
+   ```
+   (See pulchra README file for detailed instructions). This generates an executable `pulchra` in the same folder. Test it:
+   ```sh
+   ./pulchra
+   ```
+   ...should give you the pulchra help screen with all the options for running the program.
+2. Move binary to system-wide search path. On Linux sytems, this could be for example:
+   ```sh
+   sudo mv pulchra /usr/local/bin/
+   ```
+3. Test that pulchra can be called system-wide:
+   ```sh
+   cd ~
+   pulchra
+   ```
+   ...should give you the same help screen.
+4. Clean up. You can now remove the source code alltogether or move it to a more appropriate location. For example:
+   ```sh
+   cd /tmp
+   mv pulchra_306 /usr/local/src
+   ```
+   
+Note, you can also leave `pulchra` in any other folder and configure multiprot to find it there. 
+   
+
+### Install multiprot Python package
+
+For developers, installation directly from github should work like this: 
+
+1. Download latest multiprot version (this will create a folder `multiprot` within the current directory):
+   ```sh
+   git clone https://github.com/StruBE-KAUST/multiprot.git
+   ```
+2. set up and start virtual environmnent (This step is optional. Skip if you prefer installing multiprot system-wide):
+   ```sh
+   cd multiprot
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+   At this point, it's a good idea to update your `pip` tool (only affects the virtual environment):
+   ```sh
+   pip install --upgrade pip
+   ```
+3. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand:
+   ```sh
+   git clone https://github.com/graik/biskit.git biskit
+   pip3 install -r biskit/requirements.txt
+   pip3 install -e biskit
+   ```
+4. Ensure multiprot is in the virtual environment's python path. Easiest is to create a symbolic link because that avoids any issues with having two different copies of the package flying around on your system. From within the base `multiprot` folder (as before) run:
+   ```sh
+   ln -s multiprot venv/lib/venv/lib/python3.?/site-packages/
+   ```
+5. Test your installation:
+   ```sh
+   python multiprot/testing.py -v 2
+   ```
+   This will run the complete multiprot test suite (can take some minutes). If both Ranch and Pulchra are installed, it should finish without errors.
+
+# Using multiprot on the commandline
+
+Go to the package directory and run the `multiprot_script.py` script with the required arguments.
+To see a full list of arguments run `python multiprot_script.py -h`. Here you can find a few examples, where all the file names are relative to the `multiprot/multiprot` package folder:
 
 ## Example 1
 Build simple single-chain protein joining two structured domains (2z6o.pdb and histone.pdb) with a disordered linker (GGGGGGGGGG), and saving the resulting models to example1/ directory

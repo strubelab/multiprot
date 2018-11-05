@@ -1,0 +1,36 @@
+NOTES:
+If you write more than one chain, they all have to be bound to each other (no individual chains)
+
+
+Single chain
+
+python multiprot.py --chain testdata/histone.pdb TGTGTGTGTGTGTGTGTGTGTG testdata/2z6o.pdb --destination testdata/ex1
+
+
+Single chain with multiple chain domains
+
+python multiprot.py --chain testdata/domAB1.pdb:A GTGTGTGTGTGTGTGTGTGT testdata/domAB2.pdb --fixed testdata/domAB1.pdb --destination testdata/ex2
+
+
+Single chain with symmetry
+
+python multiprot.py --chain testdata/domAB1.pdb GTGTGTGTGTGTGTGTGT testdata/histone.pdb --symmetry p2 --symtemplate testdata/domAB1.pdb --poolsym s --destination testdata/ex3
+
+
+
+2Chains
+
+python multiprot.py --chain testdata/domAB1.pdb:A GTGTGTGTGTTGTGTGTGTGTT testdata/2qud_mod.pdb:A GTGTGTGTGTGTGTGGTGTGTGTGTGT testdata/domAB2.pdb:A --chain testdata/domAB1.pdb:B GTGTGTGTGTGTGTGTGTGTGTGTGTGT testdata/2qud_mod.pdb:B GGGTGTGTGTGTGTGTGTGTGTTGTG testdata/domAB2.pdb:B --fixed testdata/domAB1.pdb testdata/domAB2.pdb testdata/2qud_mod.pdb --destination testdata/ex2chains
+
+3Chains
+
+python multiprot.py --chain testdata/2z6o.pdb TGTGTGTGTGTGTGTGTGTGTGT testdata/2ei4_mod.pdb:A TGTGTGTGTTTGTTGTTGTG testdata/2z6o.pdb --chain testdata/histone.pdb TGTGTGTGTGTGTGTGTGTGTGTTTGT testdata/2ei4_mod.pdb:B TGTGTGTGTGTGTGTGTGTGTTGTTGT testdata/histone.pdb --chain testdata/lit2_A.pdb TGTTGTGTGTGTGTGTGTTGTGTGTGTTGTGT testdata/2ei4_mod.pdb:C TGTGTGTGTGTGTGTGTGGTGTTGTTGTGTGTT testdata/lit2_A.pdb --destination testdata/ex3chains
+
+3Chains symmetry
+
+python multiprot.py --chain testdata/2ei4_mod.pdb TGTGTGGTTTTGTGTGTTGTGTGTGGTG testdata/histone.pdb --symmetry p3 --symtemplate testdata/2ei4_mod.pdb --poolsym s --destination testdata/3chsym
+
+
+2Chains symmetry
+
+python multiprot.py --chain testdata/2ei4_mod.pdb TGTGTGTGTGTGTGTTGTTG testdata/domAB1.pdb:A --chain testdata/histone.pdb TGTGTGTTTGTTGTGTGTT testdata/domAB1.pdb:B TTGTGTGTGTGTGTGTGTG testdata/2z6o.pdb --symmetry p3 --symtemplate testdata/2ei4_mod.pdb --poolsym s --destination testdata/2chsym
