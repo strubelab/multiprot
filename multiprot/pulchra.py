@@ -59,7 +59,11 @@ class Pulchra(Executor):
 
         self.model.writePdb(pdb_path)
 
-        super().__init__('pulchra', tempdir=tempdir, strict=False, 
+        # Path for config file
+        self.configpath = [os.path.join(os.path.abspath(
+            os.path.dirname(__file__)), 'exeConfig/')]
+
+        super().__init__('pulchra', tempdir=tempdir, configpath=self.configpath,
             args=pdb_path, **kw)
 
     def finish(self):
