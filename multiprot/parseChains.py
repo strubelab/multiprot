@@ -91,7 +91,7 @@ def parsing(args=None):
     parser.add_argument('--number', '-n', default=3, help='How many models do you want\
         to produce? (less models = faster)')
 
-    parser.add_argument('--poolsym', '-o', default='m', choices=['m', 's', 'a'], 
+    parser.add_argument('--poolsym', '-o', default='s', choices=['m', 's', 'a'], 
         help='Specify the overall symmetry of the molecules to be produced, i.e. \
         all symmetric [s], all asymmetric [a] or mixed. [m]')
 
