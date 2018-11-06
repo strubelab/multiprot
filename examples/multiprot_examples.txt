@@ -20,17 +20,24 @@ python multiprot.py --chain testdata/domAB1.pdb GTGTGTGTGTGTGTGTGT testdata/hist
 
 2Chains
 
-python multiprot.py --chain testdata/domAB1.pdb:A GTGTGTGTGTTGTGTGTGTGTT testdata/2qud_mod.pdb:A GTGTGTGTGTGTGTGGTGTGTGTGTGT testdata/domAB2.pdb:A --chain testdata/domAB1.pdb:B GTGTGTGTGTGTGTGTGTGTGTGTGTGT testdata/2qud_mod.pdb:B GGGTGTGTGTGTGTGTGTGTGTTGTG testdata/domAB2.pdb:B --fixed testdata/domAB1.pdb testdata/domAB2.pdb testdata/2qud_mod.pdb --destination testdata/ex2chains
+multipr --chain testdata/domAB1.pdb:A TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/2qud_mod.pdb:A TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB2.pdb:A --chain testdata/domAB1.pdb:B TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/2qud_mod.pdb:B TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB2.pdb:B --fixed testdata/domAB1.pdb testdata/domAB2.pdb testdata/2qud_mod.pdb --destination ../examples/example5
 
-3Chains
+3Chains1
 
-python multiprot.py --chain testdata/2z6o.pdb TGTGTGTGTGTGTGTGTGTGTGT testdata/2ei4_mod.pdb:A TGTGTGTGTTTGTTGTTGTG testdata/2z6o.pdb --chain testdata/histone.pdb TGTGTGTGTGTGTGTGTGTGTGTTTGT testdata/2ei4_mod.pdb:B TGTGTGTGTGTGTGTGTGTGTTGTTGT testdata/histone.pdb --chain testdata/lit2_A.pdb TGTTGTGTGTGTGTGTGTTGTGTGTGTTGTGT testdata/2ei4_mod.pdb:C TGTGTGTGTGTGTGTGTGGTGTTGTTGTGTGTT testdata/lit2_A.pdb --destination testdata/ex3chains
+multipr --chain testdata/2z6o.pdb TGTGTGTGTGTGTGTGTGTGTGT testdata/2ei4_mod.pdb:A TGTGTGTGTTTGTTGTTGTG testdata/2z6o.pdb --chain testdata/histone.pdb TGTGTGTGTGTGTGTGTGTGTGTTTGT testdata/2ei4_mod.pdb:B TGTGTGTGTGTGTGTGTGTGTTGTTGT testdata/histone.pdb --chain testdata/lit2_A.pdb TGTTGTGTGTGTGTGTGTTGTGTGTGTTGTGT testdata/2ei4_mod.pdb:C TGTGTGTGTGTGTGTGTGGTGTTGTTGTGTGTT testdata/lit2_A.pdb --destination testdata/ex3chains
 
 3Chains symmetry
 
 python multiprot.py --chain testdata/2ei4_mod.pdb TGTGTGGTTTTGTGTGTTGTGTGTGGTG testdata/histone.pdb --symmetry p3 --symtemplate testdata/2ei4_mod.pdb --poolsym s --destination testdata/3chsym
 
+3Chains2
+
+multipr --chain testdata/2z6o.pdb TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB1.pdb:A TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/histone.pdb --chain testdata/domAB1.pdb:B TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB2.pdb:A --chain testdata/1it2_A.pdb TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB2.pdb:B TGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/histone.pdb --destination ../examples/example6
 
 2Chains symmetry
 
-python multiprot.py --chain testdata/2ei4_mod.pdb TGTGTGTGTGTGTGTTGTTG testdata/domAB1.pdb:A --chain testdata/histone.pdb TGTGTGTTTGTTGTGTGTT testdata/domAB1.pdb:B TTGTGTGTGTGTGTGTGTG testdata/2z6o.pdb --symmetry p3 --symtemplate testdata/2ei4_mod.pdb --poolsym s --destination testdata/2chsym
+python multipr --chain testdata/2ei4_mod.pdb TGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB1.pdb:A --chain testdata/histone.pdb TGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/domAB1.pdb:B TGTGTGTGTGTGTGTGTGTGTGTGTGTGTG testdata/2z6o.pdb --symmetry p3 --symtemplate testdata/2ei4_mod.pdb --destination ../examples/example8
+
+4Chains
+
+multipr --chain testdata/5agc.pdb
