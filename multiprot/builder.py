@@ -194,47 +194,8 @@ class Builder:
         models = call.run()
         return models
 
-    # def pulchra_rebuild(self, model):
-    #     """
-    #     Calls pulchra for the chains with CA residues, and cleans the rebuilt
-    #     models
 
-    #     :param models:  output list of [(PDBModel, modeled_domains, out_symseq)] 
-    #                     as produced by Ranch, where for
-    #                     each symmetric domain (only one if no symmetry) the
-    #                     first chain is the one containing CA residues that must
-    #                     be rebuilt
-    #     :type models:   list
-    #     :return rebuit: list of 10 PDBModels after the chains with CA residues
-    #                     were rebuilt by pulchra
-    #     :type rebuilt:  list
-    #     """
-
-    #     # Rebuild only the chains with CA, which is the first one plus its
-    #     # repetitions in symmetric units
-
-    #     full = B.PDBModel()
-    #     m = model
-    #     to_reb_seq = m.takeChains([0]).sequence()
-    #     to_reb_len = len(m.takeChains([0]))
-
-    #     for j in range(m.lenChains()):
-    #         chain = m.takeChains([j])
-
-    #         if chain.sequence() == to_reb_seq and len(chain) == to_reb_len:
-    #             call = P.Pulchra(chain)
-    #             rebuilt = call.run()
-    #             full = full.concat(rebuilt)
-
-    #         else:
-    #             full = full.concat(chain)
-    
-    #     full.addChainId()
-    #     full['serial_number'] = N.arange(1,len(full)+1)
-
-    #     return full
-
-## FOR ONLY ONE SYMMETRIC SEQUENCE
+    ## FOR ONLY ONE SYMMETRIC SEQUENCE
     def pulchra_rebuild(self, model):
         """
         Calls pulchra for the first chain of the model, which is the one containing
@@ -264,65 +225,6 @@ class Builder:
 
         return m_reb
 
-
-    # def extract_embedded(self,models,emb_mod,container_seq):
-    #     """
-    #     models = list of models to be processed
-    #     emb_mod = sequence of the embedded chain
-    #     container_seq = sequence of the entire modeled chain (that contains emb_mod)
-    #     symseq = sequence of the symmetric unit
-    #     """
-    #     processed = []
-
-    #     for i in range(len(models)):
-    #         m = models[i]
-    #         ch_ind = []     # Will contain the atom indexes of the container_seq with
-    #                         # the emb_mod inside, to be removed later from 'm'
-            
-    #         # Search for the sequence of the entire container_seq containing the
-    #         # emb_mod and take all of it from the model... for each symmetric unit
-    #         for match in re.finditer(container_seq, m.sequence())
-    #             start,end = match.span()
-    #             ch = m.takeResidues(list(range(start,end)))
-    #             atom_start = m.resIndex()[start]
-    #             atom_end = m.resIndex()[end]
-    #             ch_ind.append((atom_start,atom_end))
-
-    #             # Search for the embedded chain inside, take it and rebuild the
-    #             # container chain
-    #             emb_match = re.search(emb_mod, ch.sequence())
-    #             if emb_match:
-    #                 emb_start,emb_end = emb_match.span()
-    #                 emb_ch = ch.takeResidues(list(range(emb_start,emb_end)))
-    #                 emb_atomstart = ch.resIndex()[emb_start]
-    #                 emb_atomend = ch.resIndex()[emb_end]
-                    
-    #                 ch.remove(list(range(emb_atomstart,emb_atomend)))
-
-    #                 while ch.lenChains() > 1:
-    #                     ch.mergeChains(0)
-
-    #                 ch.renumberResidues()
-
-    #                 call_pulcura = P.Pulchra(ch)
-    #                 ch_rebuilt = call_pulcura.run()
-
-    #                 ch_rebuilt = ch_rebuilt.concat(emb_ch)
-
-    #                 m = m.concat(ch_rebuilt)
-
-    #         # Sort the list to remove the atoms from  hightest to lowest index
-    #         ch_ind = sorted(ch_ind, key=itemgetter(0), reverse=True)
-
-    #         for i_start,i_end in ch_ind:
-    #             m.remove(list(range(i_start,i_end)))
-
-    #         m.addChainId()
-    #         m['serial_number'] = N.arange(1,len(m)+1)
-
-    #         processed.append(m)
-
-    #     return processed
 
     def restore_emb(self,emb_mod,emb_ch):
         '''
@@ -639,20 +541,6 @@ class Builder:
         self.create_full()
         return self.concat_full()
 
-    # def extract_symmetric(full, emb):
-    #     """
-    #     Extracts each emb domain from full_model, backwards
-    #     """
-    #     inds = sorted(list(range(len(emb))), reverse=True)
-
-    #     for i in inds:
-    #         for m in emb[i]:
-    #             # Remove the embedded sequences and add them at the end of full
-    #             full = Ranch.extract_fixed(m,full)
-    #             full = full.concat(m)
-
-    #     return full
-
 
     def write_pdbs(self, models, dest, pref='mp'):
         '''
@@ -665,7 +553,6 @@ class Builder:
             models[i].writePdb(f_out[i])
 
         return None    
-
 
 
 #############
