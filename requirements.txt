@@ -1,0 +1,4 @@
+biggles==1.7.2
+biopython==1.70
+numpy==1.14.0
+scipy==1.0.0
