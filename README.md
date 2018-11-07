@@ -15,7 +15,7 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 
 1. Create a user account at [ATSAS website account registration](https://www.embl-hamburg.de/biosaxs/atsas-online/register.php)
 2. Download ATSAS package for your architecture from [ATSAS download area](https://www.embl-hamburg.de/biosaxs/atsas-online/download.php)
-3. Install package (Instructions [here](https://www.embl-hamburg.de/biosaxs/manuals/install.html)). E.g. for Debian or Ubuntu:
+3. Install package (instructions [here](https://www.embl-hamburg.de/biosaxs/manuals/install.html)). E.g. for Debian or Ubuntu:
     ```sh
     sudo apt install ./ATSAS-2.8.4-1_amd64.deb
     ```
@@ -44,7 +44,7 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
    ./pulchra
    ```
    ...should give you the pulchra help screen with all the options for running the program.
-2. Move binary to system-wide search path. On Linux sytems, now type the following:
+2. Move binary file to system-wide search path, so you can call it from any location. On Linux sytems, now type the following:
    ```sh
    sudo mv pulchra /usr/local/bin/
    ```
@@ -60,18 +60,18 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
    mv pulchra_306 /usr/local/src
    ```
    
-Note, you can also leave the `pulchra` executable in any other folder and configure multiprot to find it there. 
-   
+Note, you can also leave the `pulchra` executable in any other folder instead of the location of step 2, and configure multiprot to find it there. 
+
 
 ### Install multiprot Python package
 
+##### Installing Python 3
+You need to have an installation of Python 3 or above to use multiprot. You can download it from [Python's official webpage](https://www.python.org/downloads/) or through a [package manager](https://docs.python-guide.org/starting/installation/). If you're unsure wether python 3 is installed on your system, type `python3` on the command line and the python console should open. Otherwise, type just `python` and read the version number on top (and afterwards type `quit()` and `enter` to quit the python console).
+
+##### Installing multiprot
 For developers, installation directly from github should work like this: 
 
-1. Download latest multiprot version (this will create a folder `multiprot` within the current directory):
-   ```sh
-   git clone https://github.com/StruBE-KAUST/multiprot.git
-   ```
-2. set up and start virtual environmnent (This step is optional. Skip if you prefer installing multiprot system-wide):
+1. Set up and start virtual environmnent (This step is optional. Skip to **2** if you prefer installing multiprot system-wide):
    ```sh
    cd multiprot
    python3 -m venv venv
@@ -81,26 +81,31 @@ For developers, installation directly from github should work like this:
    ```sh
    pip install --upgrade pip
    ```
-3. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand:
+2. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand. In your command line, go to a directory where you would like to save multiprot's and biskit's source code and package contents, and then download the latest version of both and install as follows:
    ```sh
    git clone https://github.com/graik/biskit.git biskit
    pip3 install -r biskit/requirements.txt
    pip3 install -e biskit
    ```
-4. Ensure multiprot is in the virtual environment's python path. Easiest is to create a symbolic link because that avoids any issues with having two different copies of the package flying around on your system. From within the base `multiprot` folder (as before) run:
+
+   ```sh
+   git clone https://github.com/StruBE-KAUST/multiprot.git
+   pip3 install -e multiprot
+   ```
+3. Ensure multiprot is in the virtual environment's python path. Easiest is to create a symbolic link because that avoids any issues with having two different copies of the package flying around on your system. From within the base `multiprot` folder (as before) run:
    ```sh
    ln -s multiprot venv/lib/venv/lib/python3.?/site-packages/
    ```
-5. Test your installation:
+4. Test your installation:
    ```sh
-   python multiprot/testing.py -v 2
+   python multiprot/multiprot/testing.py -v 2
    ```
    This will run the complete multiprot test suite (can take some minutes). If both Ranch and Pulchra are installed, it should finish without errors.
 
 ## Using multiprot on the commandline
 
-You can now from any location call the `multipr` script with the required arguments.
-To see a full list of arguments run `multipr -h`. Here you can find a few examples, where all the file names are relative to the `multiprot/multiprot` package folder:
+You can now call from any location on your command line the `multipr` script with the required arguments.
+To see a full list of arguments and related help simply run `multipr -h`. Below you can find a few examples, where all the file names for the arguments are relative to the `multiprot/multiprot` package folder:
 
 ### Single chain examples
 ##### [Example 1](examples/example1/example1.png)
