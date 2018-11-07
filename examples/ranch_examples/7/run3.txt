@@ -1,1 +1,0 @@
-ranch sequence_mod5.seq -s=p2 -q=10 -x=histone.pdb -x=dom1_AB.pdb -x=histone.pdb -f=no -f=no -f=no -o=no -o=yes -o=no -w=2dom_p2/nonfixed -i --filesuffix=nonfixed

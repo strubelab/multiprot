@@ -1,2 +1,0 @@
-00001chainXYZ_mod.pdb
-00002chainXYZ_mod.pdb

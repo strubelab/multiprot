@@ -1,1 +1,0 @@
-ranch seqY3.fasta -s=p3 -q=10 -x=00001chainY2_mod_fixed_mod1.pdb -x=dom1A.pdb -f=no -f=yes -o=yes -o=no --filesuffix=chainY3 -w=p4 -i

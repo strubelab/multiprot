@@ -1,1 +1,0 @@
-ranch seqY.fasta -s=p3 -q=10 -x=histone.pdb -x=00001chainX_mod_fixed_mod.pdb -x=histone.pdb -f=no -f=no -f=no -o=no -o=yes -o=no --filesuffix=chainY -w=p2 -i
