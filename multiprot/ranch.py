@@ -557,7 +557,8 @@ class Ranch(Executor):
 
         ## CHECK IF THE MESSAGE POPS UP
 
-        print('Ranch call failed.')   ## temporary
+        print('    Ranch failed to build the chain:')   ## temporary
+        print('    '+self.error.strip(' \n'))
 
         ## PRINT ERROR MESSAGE FROM RANCH
 
