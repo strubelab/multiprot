@@ -192,6 +192,8 @@ class Builder:
         # Model with ranch
         call = R.Ranch(*chaini.domains, **chaini.args, debug=self.debug)
         models = call.run()
+        if models is None:
+            raise RanchError('Models not produced.')
         return models
 
 
@@ -215,6 +217,7 @@ class Builder:
         m = model
         ch = m.takeChains([0])
 
+        print('    Rebuilding with pulchra...')
         call = P.Pulchra(ch)
         ch_reb = call.run()
 
@@ -298,6 +301,7 @@ class Builder:
 
         ch.renumberResidues()
 
+        print('    Rebuilding with pulchra...')
         call_pulcura = P.Pulchra(ch)
         ch_reb = call_pulcura.run()
 
@@ -433,6 +437,8 @@ class Builder:
         final.addChainId()
         final['serial_number'] = N.arange(1,len(final)+1)
 
+        print('Done.')
+
         return final
 
     def replace_jdoms(self,chainj):
@@ -462,6 +468,8 @@ class Builder:
         chaini = self.CHAINS[i]
 
         # Take only 'num' number of models
+        print('Chain %d' % (i+1))
+        print('    Modeling with ranch...')
         models = self.call_ranch(chaini)[:self.num]
 
         model = models[0]   # take first PDBModel

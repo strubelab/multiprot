@@ -548,17 +548,27 @@ class Ranch(Executor):
         """
         ## CHECK HOW TO SEE OUTPUT
 
-        return self.error or 'Problems' in str(self.output)
+        return len(os.listdir(self.dir_models))==0
 
     def fail(self):
         """
         Overrides Executor method. Called when execution fails.
         """
 
-        ## CHECK IF THE MESSAGE POPS UP
-
-        print('    Ranch failed to build the chain:')   ## temporary
-        print('    '+self.error.strip(' \n'))
+        print('    * Ranch failed to build the chain:')
+        
+        if 'The domains specified as fixed may be too far away' in self.error:
+            print('      The domains specified as fixed may be too far away\n'+\
+                '      to be connected by the specified linkers. Ranch was \n'+\
+                '      not able to produce any models.\n')
+        elif 'residue (~) not recognized' in self.error:
+            print('      Please make sure to remove all HETATMS from the PDB file.\n')
+        elif ') not recognized' in self.error:
+            print('      '+self.error.strip(' \n')+('.\n      Please check the linkers'+\
+                ' and make sure that the PDB file\n      names in the input '+\
+                'end with .pdb\n'))
+        else:
+            print('      '+self.error.strip(' '))
 
         ## PRINT ERROR MESSAGE FROM RANCH
 
