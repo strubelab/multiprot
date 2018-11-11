@@ -17,7 +17,7 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 2. Download ATSAS package for your architecture from [ATSAS download area](https://www.embl-hamburg.de/biosaxs/atsas-online/download.php)
 3. Install package (instructions [here](https://www.embl-hamburg.de/biosaxs/manuals/install.html)). E.g. for Debian or Ubuntu:
     ```sh
-    sudo apt install ./ATSAS-2.8.4-1_amd64.deb
+    sudo dpkg --install ./ATSAS-2.8.4-1_amd64.deb
     ```
     This will, among other tools, put the `ranch` command into your search path. Open a terminal and verify that the program is correctly installed. Typing the `ranch` command should open the interactive ranch prompt:
     ```sh
@@ -57,7 +57,8 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 4. Clean up. You can now remove the source code alltogether or move it to a more appropriate location. For example:
    ```sh
    cd /tmp
-   mv pulchra_306 /usr/local/src
+   rm -r pulchra_306
+   rm pulchra_306.tgz
    ```
    
 Note, you can also leave the `pulchra` executable in any other folder instead of the location of step 2, and configure multiprot to find it there. 
@@ -66,7 +67,7 @@ Note, you can also leave the `pulchra` executable in any other folder instead of
 ### Install multiprot Python package
 
 ##### Installing Python 3
-You need to have an installation of Python 3 or above to use multiprot. You can download it from [Python's official webpage](https://www.python.org/downloads/) or through a [package manager](https://docs.python-guide.org/starting/installation/). If you're unsure wether python 3 is installed on your system, type `python3` on the command line and the python console should open. Otherwise, type just `python` and read the version number on top (and afterwards type `quit()` and `enter` to quit the python console).
+You need to have an installation of Python 3 to use multiprot. You can download it from [Python's official webpage](https://www.python.org/downloads/) or through a [package manager](https://docs.python-guide.org/starting/installation/). If you're unsure wether python 3 is installed on your system, type `python3 --version`.
 
 ##### Installing multiprot
 For developers, installation directly from github should work like this: 
@@ -74,7 +75,7 @@ For developers, installation directly from github should work like this:
 1. Set up and start virtual environmnent (This step is optional. Skip to **2** if you prefer installing multiprot system-wide):
    ```sh
    cd multiprot
-   python3 -m venv venv
+   virtualenv --python=python3 venv
    source venv/bin/activate
    ```
    At this point, it's a good idea to update your `pip` tool (only affects the virtual environment):
@@ -84,21 +85,17 @@ For developers, installation directly from github should work like this:
 2. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand. In your command line, go to a directory where you would like to save multiprot's and biskit's source code and package contents, and then download the latest version of both and install as follows:
    ```sh
    git clone https://github.com/graik/biskit.git biskit
-   pip3 install -r biskit/requirements.txt
-   pip3 install -e biskit
+   pip install -r biskit/requirements.txt
+   pip install ./biskit
    ```
 
    ```sh
    git clone https://github.com/StruBE-KAUST/multiprot.git
-   pip3 install -e multiprot
+   pip install ./multiprot
    ```
-3. Ensure multiprot is in the virtual environment's python path. Easiest is to create a symbolic link because that avoids any issues with having two different copies of the package flying around on your system. From within the base `multiprot` folder (as before) run:
+3. Test your installation:
    ```sh
-   ln -s multiprot venv/lib/venv/lib/python3.?/site-packages/
-   ```
-4. Test your installation:
-   ```sh
-   python multiprot/multiprot/testing.py -v 2
+   python3 multiprot/multiprot/testing.py -v 2
    ```
    This will run the complete multiprot test suite (can take some minutes). If both Ranch and Pulchra are installed, it should finish without errors.
 
