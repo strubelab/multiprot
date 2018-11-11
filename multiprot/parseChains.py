@@ -132,9 +132,6 @@ def create_chains(args):
                             # of PDBModels
         rfixed = []     # List with domains to be fixed in their coordinates
         rsymtemp = None     # symtemplate
-        # rmulti = []     # list of tuples [('i_1234.pdb', 'A'), ... ] for each domain
-                        # with a chain specified, where i is the domain number
-                        # inside the chain
 
         for i in range(len(chain)):
             # For each component of the chain
@@ -146,12 +143,6 @@ def create_chains(args):
                     # # ABCD.pdb:A --> ('ABCD.pdb','A')
                     rchains[pdb] = chain[i][1]
                     rchains_names[chain[i][0]] = chain[i][1]
-                    
-                    # Append domain index to deal with repeated pdb names
-                    # rmulti.append((str(i)+'_'+chain[i][0], chain[i][1]))
-                    # CHANGE THIS TO WORK WITH DUPLICATED PDB NAMES
-                    # MAYBE APPEND AN INDEX ?
-                    # SYMTEMPLATE PDB CANNOT BE DUPLICATED
                     
                 if chain[i][0] in args.fixed:  
                     # If domain will be fixed
@@ -183,11 +174,6 @@ def create_chains(args):
             }
 
         CHAINS.append(Chain(rnames, rdomains, args_dict, False, rchains_names))
-
-        # chains[i] = (domains/linkers, args_dict, already modeled (T/F), 
-        #               multichain domains)
-        # rmulti is a list of tuples [('1234.pdb', 'A'), ... ] for every domain 
-        # with a chain specified
         
     # Put any chain with fixed domains at the beginning, to be modeled first
     if any([ch.args["fixed"] for ch in CHAINS]):

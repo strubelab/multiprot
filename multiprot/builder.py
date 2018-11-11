@@ -535,7 +535,10 @@ class Builder:
                             chainj.args["fixed"].remove(chainj.domains[j_ind])
                             chainj.domains[j_ind] = jdom_new
                             chainj.args["fixed"].append(jdom_new)
-                            
+                            # NOTE: Add jdom_new to chainj.args['chains'] dict??
+                            # Not necessary so far since jdom_new is always the
+                            # first chain, and that's the one taken if there is
+                            # no chain specified in args['chains'] dict
 
                         self.create_full(j)
                         break
