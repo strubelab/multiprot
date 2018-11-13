@@ -70,19 +70,15 @@ Note, you can also leave the `pulchra` executable in any other folder instead of
 You need to have an installation of Python 3 to use multiprot. You can download it from [Python's official webpage](https://www.python.org/downloads/) or through a [package manager](https://docs.python-guide.org/starting/installation/). If you're unsure wether python 3 is installed on your system, type `python3 --version`.
 
 ##### Installing multiprot
-For developers, installation directly from github should work like this: 
 
-1. Set up and start virtual environmnent (This step is optional. Skip to **2** if you prefer installing multiprot system-wide):
-   ```sh
-   cd multiprot
-   virtualenv --python=python3 venv
-   source venv/bin/activate
-   ```
-   At this point, it's a good idea to update your `pip` tool (only affects the virtual environment):
-   ```sh
-   pip install --upgrade pip
-   ```
-2. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand. In your command line, go to a directory where you would like to save multiprot's and biskit's source code and package contents, and then download the latest version of both and install as follows:
+1. multiprot depends on the python 3 version of [biskit](https://github.com/graik/biskit) which is not yet available on pypi so we have to install it by hand. In your command line, go to a directory where you would like to save multiprot's and biskit's source code and package contents, and install as follows:
+   - OPTIONAL: Set up and start a virtual environment. Skip if you prefer installing multiprot system-wide.
+     ```sh
+     virtualenv --python=python3 venv
+     source venv/bin/activate
+     pip install --upgrade pip
+     ```
+   Download the latest version of multiprot and biskit, and install:
    ```sh
    git clone https://github.com/graik/biskit.git biskit
    pip install -r biskit/requirements.txt
@@ -93,7 +89,7 @@ For developers, installation directly from github should work like this:
    git clone https://github.com/StruBE-KAUST/multiprot.git
    pip install ./multiprot
    ```
-3. Test your installation:
+2. Test your installation:
    ```sh
    python3 multiprot/multiprot/testing.py -v 2
    ```
