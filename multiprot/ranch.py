@@ -57,7 +57,34 @@ def embed(dom, to_embed):
 
     return first.concat(to_embed,last)
 
-def extract_embedded(full, embedded):
+def add_singles(full, modeled_single):
+    '''
+    Create modeled_doms and add single chain domains with new coordinates
+    
+    :param full:
+    :param modeled_doms:    dictionary to which modeled_single domains will be
+                            added
+    :type modeled_doms:     dict
+    :param modeled_single:  dictionary with single chain domains with their new
+                            coordinates from ranch
+    :type modeled_single:   dict
+    '''
+    modeled_doms = {}
+    for key, value in modeled_single.items():
+        dom = value[1]
+        start = value[0]
+        end = start + len(dom.sequence())
+        # print('')
+        # print(start,end,dom.sequence(), full.sequence()[start:end], full.sequence())
+        assert dom.sequence() == full.sequence()[start:end]
+        new_dom = full.takeResidues(list(range(start,end)))
+        new_dom.atoms['chain_id'] = dom.atoms['chain_id']
+        new_dom.atoms['residue_number'] = dom.atoms['residue_number']
+        modeled_doms[key] = new_dom
+
+    return modeled_doms
+
+def extract_embedded(full, embedded, modeled_single):
     """
     Extracts one  or more PDBModels from another
     Finds the sequence and location of each domain in embedded dictionary.
@@ -67,6 +94,7 @@ def extract_embedded(full, embedded):
     It also returns the original multichain domain (before adding to the chain)
     but with the new coordinates after modeling
     
+    :param full:    chain as modeled by ranch
     :param embedded: dictionary with embedded domains and its position (index)
                             in the full sequence
     :type embedded: dictionary
@@ -83,9 +111,12 @@ def extract_embedded(full, embedded):
 
     r = B.PDBModel()
     emb_ind = []   # List for start and end indexes for each embedded domain
-    modeled_doms = {}   # Dict for domains that were modeled
+    
+    # Create dictionary for domains that were modeled
+    modeled_doms = add_singles(full, modeled_single)
 
-    for dom, value in embedded.items():
+    for key, value in embedded.items():
+        dom = value[2]
         m = value[1]    # domain that has dom embedded in
         i_start = value[0]  # start position of dom in full
         i_end = i_start + len(dom.sequence())   # end position of dom in full
@@ -116,7 +147,7 @@ def extract_embedded(full, embedded):
             m_new.atoms['chain_id'] = m.atoms['chain_id']
             m_new.atoms['residue_number'] = m.atoms['residue_number']
             m_new = m_new.concat(emb)
-            modeled_doms[value[2]] = m_new
+            modeled_doms[key] = m_new
             
             r = r.concat(emb)
             
@@ -152,7 +183,7 @@ def extract_embedded(full, embedded):
     return full, [modeled_doms], out_symseq
 
 
-def extract_symmetric(full, symseq, embedded):
+def extract_symmetric(full, symseq, embedded, modeled_single):
     """
     MODIFY
     Extracts one or more embedded chains from a PDBModel with a symmetric
@@ -184,7 +215,7 @@ def extract_symmetric(full, symseq, embedded):
             istart, iend = match.span()
             symunit = full.takeResidues(list(range(istart, iend)))
             # Extract embedded domains one symunit at a time
-            extracted = extract_embedded(symunit, embedded)
+            extracted = extract_embedded(symunit, embedded, modeled_single)
             symunits.append(extracted[0])
             modeled_doms.append(extracted[1][0])
 
@@ -319,6 +350,7 @@ class Ranch(Executor):
         self.pdbs_in = []    # list of pdb file paths
         self.embedded = {}   # dictionary with domain : residue number to
                                     # identify and locate embedded domains
+        self.modeled_single = {}    # dictionary with modeled single-chain domains
 
         self.pool_sym = pool_sym
 
@@ -401,7 +433,13 @@ class Ranch(Executor):
                     
                     # Action: Add to sequence and to domains list
                     # Conserve fixing
-                    
+
+                    # self.modeled_single = {element:(i,k)}
+                    # where element is the current element in the sequence
+                    # i is the place where it is located in the chain
+                    # k is the index(order) of this element in the chain
+                    self.modeled_single[k] = (len(self.sequence),element)
+
                     self.sequence += element.sequence()
                     self.doms_in.append(element)
 
@@ -443,6 +481,7 @@ class Ranch(Executor):
                         to_embed = extract_fixed(m, element)
                         m_emb = embed(m, to_embed)
 
+                        # CHANGE
                         self.embedded[to_embed] = (len(self.sequence) + 2, 
                             m.sequence(), k)
 
@@ -476,7 +515,7 @@ class Ranch(Executor):
                         # it was embedded in the chain, m is the domain that will
                         # contain dom, and k is the index (order) of this element
                         # in the chain 
-                        self.embedded[to_embed] = (len(self.sequence) + 2, m, k)
+                        self.embedded[k] = (len(self.sequence) + 2, m, to_embed)
 
                         self.sequence += m_emb.sequence()
                         self.doms_in.append(m_emb)
@@ -591,10 +630,10 @@ class Ranch(Executor):
         # sequence
         if self.symtemplate:
             self.result = [extract_symmetric(B.PDBModel(m), self.symseq,
-                self.embedded) for m in m_paths]
+                self.embedded, self.modeled_single) for m in m_paths]
         else:
-            self.result = [extract_embedded(B.PDBModel(m), self.embedded
-                ) for m in m_paths]
+            self.result = [extract_embedded(B.PDBModel(m), self.embedded,
+                self.modeled_single) for m in m_paths]
 
 
     def cleanup(self):
@@ -669,7 +708,14 @@ class TestRanch(testing.AutoTest):
 
         dlist = models[0][1]
         self.assertTrue(len(dlist)==1, 'list should have a single dict')
-        self.assertTrue(len(dlist[0])==0, 'dict should have 0 elements')
+
+        d = dlist[0]
+        self.assertTrue(len(d)==2, 'dict should have 2 elements')
+        self.assertTrue(self.dom1.sequence() == d[0].sequence() and \
+            self.dom2.sequence() == d[2].sequence(), 'sequences from \
+            modeled_doms and original input are different')
+        self.assertTrue(N.all(self.dom1.xyz == d[0].xyz), 'coordinates should be\
+         the same') # As the first model is always fixed
 
         out_symseq = models[0][2]
         self.assertTrue(out_symseq==model.sequence())
@@ -788,9 +834,11 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(len(dlist)==2, 'list should have two dictionaries')
 
         d = dlist[0]    # Take the first dictionary
-        # This dict will have no elements, since there are no multichain domains
-        # that could be bound to other chains
-        self.assertTrue(len(d)==0, 'dictionary should be empty')
+        # This dict will have two elements, for the two histone domains
+        self.assertTrue(len(d)==2, d)
+        self.assertTrue(self.dom2.sequence() == d[0].sequence() and \
+            self.dom2.sequence() == d[4].sequence(), 'sequences from \
+            modeled_doms and original input are different')
 
         out_symseq = models[0][2]
         self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])

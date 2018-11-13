@@ -208,6 +208,7 @@ class Chain:
         self.modeled_domains = []
         self.emb_seq = None
         self.container_seq = None
+        self.emb_mod = None
 
         # Domains with new coordinates for non-symmetric structures
         self.new_domains = ['']*len(self.names)
