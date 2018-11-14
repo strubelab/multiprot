@@ -23,11 +23,6 @@ Calling and running this wrapper returns a tuple of the form
 
 """
 
-## STILL NEED TO WRITE CODE TO TEST AND HANDLE INCORRECT INPUT, AND WHAT TO DO
-## IF RANCH FAILS
-
-## DELETE SELF. VARIABLES? (E.G. SELF.DOMS_IN)
-
 import biskit as B
 import numpy as N
 import tempfile, os
@@ -57,34 +52,7 @@ def embed(dom, to_embed):
 
     return first.concat(to_embed,last)
 
-def add_singles(full, modeled_single):
-    '''
-    Create modeled_doms and add single chain domains with new coordinates
-    
-    :param full:
-    :param modeled_doms:    dictionary to which modeled_single domains will be
-                            added
-    :type modeled_doms:     dict
-    :param modeled_single:  dictionary with single chain domains with their new
-                            coordinates from ranch
-    :type modeled_single:   dict
-    '''
-    modeled_doms = {}
-    for key, value in modeled_single.items():
-        dom = value[1]
-        start = value[0]
-        end = start + len(dom.sequence())
-        # print('')
-        # print(start,end,dom.sequence(), full.sequence()[start:end], full.sequence())
-        assert dom.sequence() == full.sequence()[start:end]
-        new_dom = full.takeResidues(list(range(start,end)))
-        new_dom.atoms['chain_id'] = dom.atoms['chain_id']
-        new_dom.atoms['residue_number'] = dom.atoms['residue_number']
-        modeled_doms[key] = new_dom
-
-    return modeled_doms
-
-def extract_embedded(full, embedded, modeled_single):
+def extract_embedded(full, embedded):
     """
     Extracts one  or more PDBModels from another
     Finds the sequence and location of each domain in embedded dictionary.
@@ -113,7 +81,7 @@ def extract_embedded(full, embedded, modeled_single):
     emb_ind = []   # List for start and end indexes for each embedded domain
     
     # Create dictionary for domains that were modeled
-    modeled_doms = add_singles(full, modeled_single)
+    modeled_doms = {}
 
     for key, value in embedded.items():
         dom = value[2]
@@ -183,7 +151,7 @@ def extract_embedded(full, embedded, modeled_single):
     return full, [modeled_doms], out_symseq
 
 
-def extract_symmetric(full, symseq, embedded, modeled_single):
+def extract_symmetric(full, symseq, embedded):
     """
     MODIFY
     Extracts one or more embedded chains from a PDBModel with a symmetric
@@ -215,7 +183,7 @@ def extract_symmetric(full, symseq, embedded, modeled_single):
             istart, iend = match.span()
             symunit = full.takeResidues(list(range(istart, iend)))
             # Extract embedded domains one symunit at a time
-            extracted = extract_embedded(symunit, embedded, modeled_single)
+            extracted = extract_embedded(symunit, embedded)
             symunits.append(extracted[0])
             modeled_doms.append(extracted[1][0])
 
@@ -350,7 +318,6 @@ class Ranch(Executor):
         self.pdbs_in = []    # list of pdb file paths
         self.embedded = {}   # dictionary with domain : residue number to
                                     # identify and locate embedded domains
-        self.modeled_single = {}    # dictionary with modeled single-chain domains
 
         self.pool_sym = pool_sym
 
@@ -433,13 +400,6 @@ class Ranch(Executor):
                     
                     # Action: Add to sequence and to domains list
                     # Conserve fixing
-
-                    # self.modeled_single = {element:(i,k)}
-                    # where element is the current element in the sequence
-                    # i is the place where it is located in the chain
-                    # k is the index(order) of this element in the chain
-                    self.modeled_single[k] = (len(self.sequence),element)
-
                     self.sequence += element.sequence()
                     self.doms_in.append(element)
 
@@ -498,9 +458,16 @@ class Ranch(Executor):
                         # Get chain index
                         if element in self.chains:  # If chain to take is specified
                             chain_id = self.chains[element]
-                            mask_chain = element.maskFrom('chain_id', chain_id)
-                            i_mask_chain = N.nonzero(mask_chain)[0]
-                            chain_ind = element.atom2chainIndices(i_mask_chain)[0]
+                            try:
+                                mask_chain = element.maskFrom('chain_id', chain_id)
+                                i_mask_chain = N.nonzero(mask_chain)[0]
+                                chain_ind = element.atom2chainIndices(i_mask_chain)[0]
+                            except IndexError:
+                                print('ERROR: The chains specified in the input '\
+                                    +'do not correspond to chain IDs from the '\
+                                    +'PDB files.\nPlease check your chain '+\
+                                    'specifications.\n')
+                                raise
                         else:
                             chain_ind = 0
 
@@ -630,10 +597,10 @@ class Ranch(Executor):
         # sequence
         if self.symtemplate:
             self.result = [extract_symmetric(B.PDBModel(m), self.symseq,
-                self.embedded, self.modeled_single) for m in m_paths]
+                self.embedded) for m in m_paths]
         else:
-            self.result = [extract_embedded(B.PDBModel(m), self.embedded,
-                self.modeled_single) for m in m_paths]
+            self.result = [extract_embedded(B.PDBModel(m), self.embedded) \
+            for m in m_paths]
 
 
     def cleanup(self):
@@ -708,14 +675,7 @@ class TestRanch(testing.AutoTest):
 
         dlist = models[0][1]
         self.assertTrue(len(dlist)==1, 'list should have a single dict')
-
-        d = dlist[0]
-        self.assertTrue(len(d)==2, 'dict should have 2 elements')
-        self.assertTrue(self.dom1.sequence() == d[0].sequence() and \
-            self.dom2.sequence() == d[2].sequence(), 'sequences from \
-            modeled_doms and original input are different')
-        self.assertTrue(N.all(self.dom1.xyz == d[0].xyz), 'coordinates should be\
-         the same') # As the first model is always fixed
+        self.assertTrue(len(dlist[0])==0, 'dict should have 0 elements')
 
         out_symseq = models[0][2]
         self.assertTrue(out_symseq==model.sequence())
@@ -833,12 +793,7 @@ class TestRanch(testing.AutoTest):
         # symmetric unit
         self.assertTrue(len(dlist)==2, 'list should have two dictionaries')
 
-        d = dlist[0]    # Take the first dictionary
-        # This dict will have two elements, for the two histone domains
-        self.assertTrue(len(d)==2, d)
-        self.assertTrue(self.dom2.sequence() == d[0].sequence() and \
-            self.dom2.sequence() == d[4].sequence(), 'sequences from \
-            modeled_doms and original input are different')
+        self.assertTrue(len(dlist[0])==0, dlist[0])   # The dictionaries have 0 elements
 
         out_symseq = models[0][2]
         self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])

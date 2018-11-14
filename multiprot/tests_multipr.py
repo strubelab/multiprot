@@ -84,7 +84,6 @@ class TestMultipr(testing.AutoTest):
         self.assertTrue(model.lenChains()==3)
         #self.assertTrue(len(model)==7326)
 
-
     # # PASSED
     # def test_example5(self):
     #     '''

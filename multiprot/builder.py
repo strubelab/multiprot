@@ -197,53 +197,77 @@ class Builder:
         return models
 
 
-    def restore_pulchra(self, ch, domains, modeled_domains):
+    def restore_pulchra(self, ch, ch_reb, domains, modeled_domains, symtemplate,
+        container_jdom):
         '''
         Retrieve the domain sidechain's coordinates from ranch, and combine with
         the rebuilt CA side chains from pulchra
         
-        param ch:       modeled chain rebuilt by pulchra
-        type ch:        PDBModel
-        param domains:  list of domains from which the chain was built.
-        type domains:   list with PDBModel and str elements
+        :param ch:      chain as originally modeled by ranch
+        :type ch:       PDBModel
+        :param ch_reb:  modeled chain rebuilt by pulchra
+        :type ch_reb:   PDBModel
+        :param domains: list of domains from which the chain was built.
+        :type domains:  list with PDBModel and str elements
+        :param modeled_domains: dictionary with multiple-chain domains that were
+                                modeled, with their new coordinates
+        :type modeled_domains:  dict
+        :param symtemplate: symmetry template used for symmetry (if any)
+        :type symtemplate:  PDBModel
+        :param container_jdom:  domain that is connecting the modeled chain to
+                                the symmetric core (see self.embed_symmetric())
+        :type container_jdom:   PDBModel  
         '''
 
-        rch = B.PDBModel()
-        res_count = 0
+        ch_res = B.PDBModel()
+        aa_count = 0
+
         for k in range(len(domains)):
             d = domains[k]
             if isinstance(d,B.PDBModel):
-                # It is always the first chain (?)
-                print(modeled_domains)
-                print(modeled_domains[k])
-                rdom = modeled_domains[k].takeChains([0])
-                len_dom = len(rdom.sequence())
+                if d.lenChains()==1:
+                    # Normal single-chain domain... take the corresponding
+                    # residues from ch
+                    len_dom = len(d.sequence())
+                    rdom = ch.takeResidues(list(range(aa_count,aa_count+len_dom)))
+                elif d is symtemplate:
+                    # Symtemplate... take the residues corresponding to the
+                    # container_jdom from ch, OR the first chain of symtemplate
+                    jdom = container_jdom or symtemplate.takeChains([0]).sequence()
+                    len_dom = len(jdom)
+                    rdom = ch.takeResidues(list(range(aa_count,aa_count+len_dom)))
+                else:
+                    # Multiple chain domain... take the corresponding chain from
+                    # modeled_domains
+                    rdom = modeled_domains[k].takeChains([0])
+                    len_dom = len(rdom.sequence())
                 
-                assert ch.sequence()[res_count:res_count+len_dom] == \
+                assert ch_reb.sequence()[aa_count:aa_count+len_dom] == \
                     rdom.sequence()
 
-                rch = rch.concat(rdom)
-                res_count += len_dom
+                ch_res = ch_res.concat(rdom)
+                aa_count += len_dom
             
             else:   # is a string
                 len_d = len(d)
-                assert ch.sequence()[res_count:res_count+len_d] == d
+                assert ch_reb.sequence()[aa_count:aa_count+len_d] == d
                 
-                rch = rch.concat(ch.takeResidues(list(range(res_count,
-                    res_count+len_d))))
-                res_count += len_d
+                ch_res = ch_res.concat(ch_reb.takeResidues(list(range(aa_count,
+                    aa_count+len_d))))
+                aa_count += len_d
 
-        while rch.lenChains() > 1:
-            rch.mergeChains(0)
+        while ch_res.lenChains() > 1:
+            ch_res.mergeChains(0)
 
-        rch.renumberResidues()
+        ch_res.renumberResidues()
 
-        assert ch.sequence() == rch.sequence()
+        assert ch_reb.sequence() == ch_res.sequence()
 
-        return rch
+        return ch_res
 
     ## FOR ONLY ONE SYMMETRIC SEQUENCE
-    def pulchra_rebuild(self, model, domains, modeled_domains):
+    def pulchra_rebuild(self, model, domains, modeled_domains, symtemplate,
+        container_jdom):
         """
         Calls pulchra for the first chain of the model, which is the one containing
         CA linkers
@@ -256,10 +280,14 @@ class Builder:
         :type model:    PDBModel
         :param domains: list of domains from which the chain was built.
         :type domains:  list with PDBModel and str elements
-        :param ch_ids:  dictionary from chaini.args['chains'] with the chain id
-                        to be taken from each domain
-        :type ch_ids:   dictionary
-        
+        :param modeled_domains: dictionary with multiple-chain domains that were
+                                modeled, with their new coordinates
+        :type modeled_domains:  dict
+        :param symtemplate: symmetry template used for symmetry (if any)
+        :type symtemplate:  PDBModel
+        :param container_jdom:  domain that is connecting the modeled chain to
+                                the symmetric core (see self.embed_symmetric())
+        :type container_jdom:   PDBModel
         :return m_reb:  model after the first chain was rebuilt by pulchra
         :type rebuilt:  PDBModel
         """
@@ -271,9 +299,10 @@ class Builder:
         call = P.Pulchra(ch)
         ch_reb = call.run()
 
-        ch_reb = self.restore_pulchra(ch_reb, domains, modeled_domains)
+        ch_res = self.restore_pulchra(ch, ch_reb, domains, modeled_domains,
+            symtemplate, container_jdom)
 
-        m_reb = ch_reb.concat(m.takeChains(list(range(1,m.lenChains()))))
+        m_reb = ch_res.concat(m.takeChains(list(range(1,m.lenChains()))))
 
         m_reb.addChainId()
         m_reb['serial_number'] = N.arange(1,len(m_reb)+1) 
@@ -382,6 +411,7 @@ class Builder:
         full_symmetric = B.PDBModel()
         emb_jsym = None
         ch = None
+        j_dom = None
         # m = []
         
         for i in range(len(full_chains)):
@@ -395,9 +425,11 @@ class Builder:
 
             full_symmetric = full_symmetric.concat(emb_jsym)
 
+        print(j_dom)
+        container_jdom = j_dom.sequence()
         emb_mod = ch
-        symunit_ranch = emb_jsym.sequence()
-        return full_symmetric, symunit_ranch, emb_mod
+        container_seq = emb_jsym.sequence()
+        return full_symmetric, container_seq, emb_mod, container_jdom
 
     def process_fullchain(self,chaini,model,out_symseq,bound_indexes):
         """
@@ -456,17 +488,19 @@ class Builder:
 
             # If there is a previously modeled chain embedded somewhere
             if chaini.container_seq:
-                # Extract the embedded chain(s) and rebuild with pulchra
+                # Extract the embedded chain(s)
                 # embedded chain(s) end up at the end of the model
                 full_ch = self.extract_embedded(full_ch, chaini.emb_mod, 
                     chaini.container_seq)
             
+            modeled_domains = model[1][s]
+
             full_ch = self.pulchra_rebuild(full_ch, chaini.domains,
-                model[1][s])
+                modeled_domains, chaini.args["symtemplate"], chaini.container_jdom)
 
             # Add symmetric unit and modeled_domains dict to chain properties
             self.full_chains.append(full_ch)
-            chaini.modeled_domains.append(model[1][s])
+            chaini.modeled_domains.append(modeled_domains)
 
             self.replace_modeled(chaini,bound_indexes,s)
 
@@ -570,6 +604,7 @@ class Builder:
                             chainj.args["symunit"] = emb_sym[1]
                             chainj.container_seq = emb_sym[1]
                             chainj.emb_mod = emb_sym[2]
+                            chainj.container_jdom = emb_sym[3]
 
                             # Delete chainj.args["fixed"] contents
                             chainj.args["fixed"] = []
