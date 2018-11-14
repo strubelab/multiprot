@@ -166,7 +166,8 @@ class Builder:
                     j_ind = chainj.names.index(pair[1])
 
                     if not chainj.new_domains[j_ind] or s>0:
-                        # Add domain with new coordinates to chainj.new_domains, and fix
+                        # Add domain with new coordinates to chainj.new_domains,
+                        # and fix
                         # Replace with only the part belonging to chain j
                         j_id = pair[1][1]
                         modeled_dom = modeled_domains[i_ind]
@@ -224,25 +225,41 @@ class Builder:
 
         for k in range(len(domains)):
             d = domains[k]
+            if k==0:    # First domain
+                # Ndelta = how many residues will be added/substracted from the N
+                # terminus of linkers/PDBModels
+                Nd = 0
+                # Cdelta = how many residues will be added/substracted from the C
+                # terminus of linkers/PDBModels
+                Cd = 2
+            elif k==len(domains)-1: # Last domain
+                Nd = 2
+                Cd = 0
+            else:   # Domain in the middle
+                Nd = 2
+                Cd = 2
+
             if isinstance(d,B.PDBModel):
                 if d.lenChains()==1:
                     # Normal single-chain domain... take the corresponding
                     # residues from ch
                     len_dom = len(d.sequence())
-                    rdom = ch.takeResidues(list(range(aa_count,aa_count+len_dom)))
+                    
                 elif d is symtemplate:
                     # Symtemplate... take the residues corresponding to the
                     # container_jdom from ch, OR the first chain of symtemplate
                     jdom = container_jdom or symtemplate.takeChains([0]).sequence()
                     len_dom = len(jdom)
-                    rdom = ch.takeResidues(list(range(aa_count,aa_count+len_dom)))
+                    
                 else:
                     # Multiple chain domain... take the corresponding chain from
                     # modeled_domains
-                    rdom = modeled_domains[k].takeChains([0])
-                    len_dom = len(rdom.sequence())
+                    len_dom = len(modeled_domains[k].takeChains([0]).sequence())
                 
-                assert ch_reb.sequence()[aa_count:aa_count+len_dom] == \
+                rdom = ch.takeResidues(list(range(aa_count+Nd,
+                    aa_count+len_dom-Cd)))
+
+                assert ch_reb.sequence()[aa_count+Nd:aa_count+len_dom-Cd] == \
                     rdom.sequence()
 
                 ch_res = ch_res.concat(rdom)
@@ -250,10 +267,10 @@ class Builder:
             
             else:   # is a string
                 len_d = len(d)
-                assert ch_reb.sequence()[aa_count:aa_count+len_d] == d
+                # assert ch_reb.sequence()[aa_count:aa_count+len_d] == d
                 
-                ch_res = ch_res.concat(ch_reb.takeResidues(list(range(aa_count,
-                    aa_count+len_d))))
+                ch_res = ch_res.concat(ch_reb.takeResidues(list(range(
+                    aa_count-Nd,aa_count+len_d+Cd))))
                 aa_count += len_d
 
         while ch_res.lenChains() > 1:
@@ -425,7 +442,6 @@ class Builder:
 
             full_symmetric = full_symmetric.concat(emb_jsym)
 
-        print(j_dom)
         container_jdom = j_dom.sequence()
         emb_mod = ch
         container_seq = emb_jsym.sequence()
@@ -643,7 +659,8 @@ class Builder:
         Writes the pdbmodels to the specified destination
         '''
 
-        f_out = [os.path.join(dest,pref+'_%02d.pdb' % i) for i in range(1,len(models)+1)]
+        f_out = [os.path.join(dest,pref+'_%02d.pdb' % i) for i in \
+            range(1,len(models)+1)]
 
         for i in range(len(models)):
             models[i].writePdb(f_out[i])
