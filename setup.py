@@ -14,6 +14,7 @@ setup(name='multiprot',
       version='1.0.0',
       install_requires=REQUIREMENTS,
       packages=find_packages(),
+      include_package_data=True,
       scripts=['multiprot/scripts/multipr'],
       author="Francisco Javier Guzman-Vega",
       description=("Automated pipeline to build protein models connecting two \

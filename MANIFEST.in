@@ -9,4 +9,3 @@ recursive-include multiprot/testdata *
 
 # Include exe config files
 recursive-include multiprot/exeConfig *
-
