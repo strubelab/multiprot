@@ -3,7 +3,7 @@
 comment=no comment
 
 ## binary
-bin=ranch
+bin=pulchra
 
 ## working directory
 cwd=
@@ -15,7 +15,7 @@ shell=0
 shellexe=
 
 ## communicate with process via STDIN and STDOUT
-pipes=1
+pipes=0
 
 ## Use new environment containing only variables given below
 replaceEnv=0

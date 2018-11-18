@@ -1,5 +1,5 @@
 """
-Errors raised by ranch script
+Errors raised by multiprot modules
 """
 
 class RanchError(Exception):
@@ -7,12 +7,10 @@ class RanchError(Exception):
     pass
 
 class InputError(RanchError):
-    """ Exception raised for errors in the input """
+    """ Exception raised for errors when the input is invalid"""
     pass
 
 class MatchError(RanchError):
     """ Exception raised for errors when comparing two sequences"""
     pass
 
-
-#### Do I need tests here?

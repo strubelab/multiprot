@@ -1,0 +1,11 @@
+# Include the README
+include *.md
+
+# Include the license file
+include LICENSE
+
+# Include test data files
+recursive-include multiprot/testdata *
+
+# Include exe config files
+recursive-include multiprot/exeConfig *
