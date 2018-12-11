@@ -8,7 +8,7 @@ https://www.embl-hamburg.de/biosaxs/eom.html
 https://www.embl-hamburg.de/biosaxs/manuals/eom.html
 
 Tria, G., Mertens, H. D. T., Kachala, M. & Svergun, D. I. (2015) Advanced 
-    ensemble modelling of flexible macromolecules using X-ray solution scattering. 
+    ensemble modelling of flexible macromolecules using X-ray solution scattering.
     IUCrJ 2, 207-217
 
 
@@ -70,10 +70,10 @@ def extract_embedded(full, embedded):
     :return full: 'full' with embedded domains concatenated at the end as 
                 independent chains
     :type full: PDBModel
-    :return modeled_doms:   list with 'modeled_doms' dictionary, which has key:value pairs 
-                where key is the index (position) of the domain in the chain and
-                value is the 'original' domain with new coordinates to be used 
-                in subsequent chains
+    :return modeled_doms:   list with 'modeled_doms' dictionary, which has
+                key:value pairs where key is the index (position) of the domain
+                in the chain and value is the 'original' domain with new
+                coordinates to be used in subsequent chains
     :type modeled_doms: list of dictionaries
     """
 
@@ -307,10 +307,14 @@ class Ranch(Executor):
         # Create temporary folder for models
         self.dir_models = tempfile.mkdtemp( '', 'models_', tempdir )
 
-        #RG: preferred (cross-platform): os.path.join(tempdir, 'sequence.seq') (SOLVED)
         self.f_seq = os.path.join(tempdir, 'sequence.seq')
 
-        self.n = n
+        self.n = n              # Number of models for the user
+        if self.n>=10:
+            self.rn = self.n    # Number of models for ranch
+        else:
+            self.rn = 10
+
         self.domains = domains
         self.chains = chains
         self.sequence = ''
@@ -322,13 +326,6 @@ class Ranch(Executor):
                                     # identify and locate embedded domains
 
         self.pool_sym = pool_sym
-
-        #RG: list comprehension should work instead of the complex loop (not tested)
-        #JG:  good idea, modified it a bit because the list still needs to contain
-        #     'yes' or 'no' values to be pasted into the args string for ranch
-        
-        # self.fixed = [ element in fixed for element in self.domains if \
-        #               isinstance(element, B.PDBModel) ]
 
         self.fixed = ['yes' if element in fixed else 'no' for element in \
                             self.domains if isinstance(element, B.PDBModel)]
@@ -463,7 +460,8 @@ class Ranch(Executor):
                             try:
                                 mask_chain = element.maskFrom('chain_id', chain_id)
                                 i_mask_chain = N.nonzero(mask_chain)[0]
-                                chain_ind = element.atom2chainIndices(i_mask_chain)[0]
+                                chain_ind = 
+                                    element.atom2chainIndices(i_mask_chain)[0]
                             except IndexError:
                                 print('ERROR: The chains specified in the input '\
                                     +'do not correspond to chain IDs from the '\
@@ -535,7 +533,7 @@ class Ranch(Executor):
             f.write(self.sequence)
 
         # Generate n models with no intensities
-        self.args = self.f_seq + ' -q=%s -i' % self.n
+        self.args = self.f_seq + ' -q=%s -i' % self.rn
 
         if self.symtemplate:
             self.args = self.args + ' -s=%s -y=%s' % (self.symmetry, 
@@ -550,6 +548,72 @@ class Ranch(Executor):
         self.args = self.args + ' -w=%s' % self.dir_models
 
         
+    def communicate( self, cmd, inp, bufsize=-1, executable=None,
+                     stdin=None, stdout=None, stderr=None,
+                     shell=0, env=None, cwd=None ):
+        """
+        Taken from Biskit.Executor, with some changes to allow ranch to be
+        stopped after the required number of models are produced
+        
+        Start and communicate with the new process. Called by execute().
+        See subprocess.Popen() for a detailed description of the parameters!
+        This method should work for pretty much any purpose but may fail for
+        very long pipes (more than 100000 lines).
+        
+        :param inp: (for pipes) input sequence
+        :type  inp: str
+        :param cmd: command
+        :type  cmd: str
+        :param bufsize: see subprocess.Popen() (default: -1)
+        :type  bufsize: int
+        :param executable: see subprocess.Popen() (default: None)
+        :type  executable: str
+        :param stdin: subprocess.PIPE or file handle or None (default: None)
+        :type  stdin: int|file|None
+        :param stdout: subprocess.PIPE or file handle or None (default: None)
+        :type  stdout: int|file|None
+        :param stderr: subprocess.PIPE or file handle or None (default: None)
+        :type  stderr: int|file|None
+        :param shell: wrap process in shell; see subprocess.Popen()
+                      (default: 0, use exe_*.dat configuration) 
+        :type  shell: 1|0
+        :param env: environment variables (default: None, use exe_*.dat config)
+        :type  env: {str:str}
+        :param cwd: working directory (default: None, means self.cwd)
+        :type  cwd: str
+        
+        :return: output and error output
+        :rtype: str, str
+        
+        :raise RunError: if OSError occurs during Popen or Popen.communicate
+        """
+        try:
+            p = subprocess.Popen( cmd.split(),
+                                  bufsize=bufsize, executable=executable,
+                                  stdin=stdin, stdout=stdout, stderr=stderr,
+                                  shell=shell or self.exe.shell,
+                                  env=env or self.environment(),
+                                  ## python 3.x: enforce textmode on all pipes:
+                                  universal_newlines=True, 
+                                  cwd=cwd or self.cwd )
+
+            self.pid = p.pid
+
+            output, error = p.communicate( inp )
+        
+            #convert byte string to actual string for Python 3.x compatibility
+##            if output is not None: output = output.decode(sys.stdout.encoding)
+##            if error is not None:  error  = error.decode(sys.stderr.encoding) 
+            
+            self.returncode = p.returncode
+
+        except OSError as e:
+            raise RunError("Couldn't run or communicate with external program: %r"\
+                  % e.strerror)
+
+        return output, error
+
+
     def isFailed(self):
         """
         Overrides executor method
@@ -570,9 +634,11 @@ class Ranch(Executor):
                 '      to be connected by the specified linkers. Ranch was \n'+\
                 '      not able to produce any models.\n')
         elif 'residue (~) not recognized' in self.error:
-            print('      Please make sure to remove all HETATMS from the PDB file.\n')
+            print(
+            '      Please make sure to remove all HETATMS from the PDB file.\n')
         elif ') not recognized' in self.error:
-            print('      '+self.error.strip(' \n')+('.\n      Please check the linkers'+\
+            print('      '+self.error.strip(' \n')+\
+                ('.\n      Please check the linkers'+\
                 ' and make sure that the PDB file\n      names in the input '+\
                 'end with .pdb\n'))
         else:
@@ -719,8 +785,8 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(self.domAB1.sequence() == d[0].sequence() and \
             self.domAB2.sequence() == d[2].sequence(), 'sequences from \
             modeled_doms and original input are different')
-        self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz), 'coordinates should be\
-         the same') # As the first model is always fixed
+        # The first model is always fixed
+        self.assertTrue(N.all(self.domAB1.xyz == d[0].xyz)) 
 
         out_symseq = models[0][2]
         self.assertTrue(out_symseq==model.sequence())
@@ -765,7 +831,8 @@ class TestRanch(testing.AutoTest):
             from modeled dom and original are different')
 
         out_symseq = models[0][2]
-        self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])
+        self.assertTrue(
+            out_symseq==model.sequence()[:int(len(model.sequence())/2)])
 
     def test_example7(self):
         linker = 'GGGGGGGGGGGGGGGGGGGG'
@@ -795,10 +862,11 @@ class TestRanch(testing.AutoTest):
         # symmetric unit
         self.assertTrue(len(dlist)==2, 'list should have two dictionaries')
 
-        self.assertTrue(len(dlist[0])==0, dlist[0])   # The dictionaries have 0 elements
+        self.assertTrue(len(dlist[0])==0, dlist[0])
 
         out_symseq = models[0][2]
-        self.assertTrue(out_symseq==model.sequence()[:int(len(model.sequence())/2)])
+        self.assertTrue(
+            out_symseq==model.sequence()[:int(len(model.sequence())/2)])
 
     def test_example10(self):
         call = Ranch(self.domAB1, 'GGGGGGGGGGGGGGGGGGGG', self.domAB2, 
@@ -830,8 +898,8 @@ class TestRanch(testing.AutoTest):
         self.assertTrue(len(dlist)==1, 'list should have a single dict')
         
         d = dlist[0]
-        # The d keys will be 0, 2 and 4, as those are the indexes of self.domAB1 and
-        # self.domAB2 in the call to ranch above
+        # The d keys will be 0, 2 and 4, as those are the indexes of self.domAB1
+        # and self.domAB2 in the call to ranch above
         self.assertTrue(len(d)==3, 'dict should have 2 elements')
         self.assertTrue(self.domAB1.sequence() == d[0].sequence() and \
             self.domAB2.sequence() == d[2].sequence() and \
