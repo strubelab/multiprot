@@ -107,6 +107,8 @@ def extract_embedded(full, embedded):
             
             emb = full.takeResidues(list(range(i_start, i_end)))
             # Restore chain ids and residue numbers
+            assert emb.sequence()==dom.sequence()
+            assert len(emb)==len(dom), str(len(emb))+', '+str(len(dom))
             emb.atoms['chain_id'] = dom.atoms['chain_id']
             emb.atoms['residue_number'] = dom.atoms['residue_number']   
 
