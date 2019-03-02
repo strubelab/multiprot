@@ -86,7 +86,7 @@ You need to have an installation of Python 3 to use multiprot. You can download 
    ```
 
    ```sh
-   git clone https://github.com/StruBE-KAUST/multiprot.git
+   git clone https://github.com/strubelab/multiprot.git
    pip install ./multiprot
    ```
 2. Test your installation:
