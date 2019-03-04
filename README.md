@@ -42,7 +42,7 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 
 [Pulchra](http://www.pirx.com/pulchra/index.shtml) is a tool developed by Piotr Rotkiewicz. We use it to add backbone and side chain atoms to the models produced by Ranch (which is only generating C-alpha traces).
 
-1. Download source code into a temporary directory. On Linux sytems, open a new terminal window and type the following commands:
+1. Download source code into a temporary directory. On Unix sytems (Linux, OSX, ...), open a new terminal window and type the following commands:
    ```sh
    cd /tmp
    wget  http://www.pirx.com/downloads/pulchra_306.tgz
