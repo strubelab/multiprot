@@ -15,17 +15,28 @@ Ranch is part of the ATSAS software package from the EMBL Hamburg (BioSax) team.
 
 1. Create a user account at [ATSAS website account registration](https://www.embl-hamburg.de/biosaxs/atsas-online/register.php)
 2. Download ATSAS package for your architecture from [ATSAS download area](https://www.embl-hamburg.de/biosaxs/atsas-online/download.php)
-3. Install package (instructions [here](https://www.embl-hamburg.de/biosaxs/manuals/install.html)). E.g. for Debian or Ubuntu:
+3. Install package (instructions [here](https://www.embl-hamburg.de/biosaxs/manuals/install.html)). For Debian or Ubuntu:
     ```sh
     sudo dpkg --install ./ATSAS-2.8.4-1_amd64.deb
     ```
-    This will, among other tools, put the `ranch` command into your search path. Open a terminal and verify that the program is correctly installed. Typing the `ranch` command should open the interactive ranch prompt:
+    This will, among other tools, put the `ranch` command into your search path. 
+ 
+    For Mac OSX:
+    ```sh
+    tar -x ATSAS*OSX.tar
+    sudo ./ATSASinstall.command
+    ```
+    Then add `/Applications/ATSAS/bin` to your path. For example add the following line to your .bashrc (or .zshenv or similar) file in your home directory:
+    ```export PATH=$PATH:/Applications/ATSAS/bin```
+    
+4. Verify installation. Open a terminal. Typing the `ranch` command should open the interactive ranch prompt:
     ```sh
     ~> ranch
     *******  ------------------------------------------------------  *******
     *******     RANCH - version 2.2 - (r10552)                    ********
     ...
     ```
+    
 
 ### Install Pulchra helper application
 
