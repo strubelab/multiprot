@@ -601,48 +601,46 @@ class Builder:
 
                 chainj.paired_to = self.find_paired(j)
                 bound_j = [key for key, value in chainj.paired_to.items()]
-                for k in bound_j:
-                    if self.CHAINS[k].modeled:
-                        # chaink = self.CHAINS[k]
-                        # Add entire model to the first domain paired to j
-                        pair = chainj.paired_to[k][0]
-                        j_ind = chainj.names.index(pair[0])
-                        # k_ind = chaini.names.index(pair[1])
 
-                        if s>1: 
-                            # There is symmetry, embed all symmetric units into
-                            # domjs ... assume that chaink is chaini
-                            j_doms = chainj.jdomains[j_ind]
-                            emb_sym = self.embed_symmetric(j_doms, self.full_chains)
-                            full_sym = emb_sym[0]
-                            chainj.domains[j_ind] = full_sym
-                            chainj.args["symtemplate"] = full_sym
-                            chainj.args["symunit"] = emb_sym[1]
-                            chainj.container_seq = emb_sym[1]
-                            chainj.emb_mod = emb_sym[2]
-                            chainj.container_jdom = emb_sym[3]
+                # Take chaini (along the rest of the modeled chains) and embed 
+                # it into the first domain in chainj bound to chaini
+                # (procedure changes a bit depending on symmetry)
+                pair = chainj.paired_to[i][0]
+                j_ind = chainj.names.index(pair[0])
 
-                            # Delete chainj.args["fixed"] contents
-                            chainj.args["fixed"] = []
-                        else:
-                            # Take domains from chainj.new_domains, and remove
-                            # them from self.full_chains[0]
-                            self.replace_jdoms(chainj)
-                            
-                            # Concat the full_chain to the first j_dom bound
-                            # to chain k
-                            jdom_new = chainj.domains[j_ind].concat(
-                                self.full_chains[0])
-                            chainj.args["fixed"].remove(chainj.domains[j_ind])
-                            chainj.domains[j_ind] = jdom_new
-                            chainj.args["fixed"].append(jdom_new)
-                            # NOTE: Add jdom_new to chainj.args['chains'] dict??
-                            # Not necessary so far since jdom_new is always the
-                            # first chain, and that's the one taken if there is
-                            # no chain specified in args['chains'] dict
+                if s>1: 
+                    # There is symmetry, embed all symmetric units into
+                    # domjs ... assume that chaink is chaini
+                    j_doms = chainj.jdomains[j_ind]
+                    emb_sym = self.embed_symmetric(j_doms, self.full_chains)
+                    full_sym = emb_sym[0]
+                    chainj.domains[j_ind] = full_sym
+                    chainj.args["symtemplate"] = full_sym
+                    chainj.args["symunit"] = emb_sym[1]
+                    chainj.container_seq = emb_sym[1]
+                    chainj.emb_mod = emb_sym[2]
+                    chainj.container_jdom = emb_sym[3]
 
-                        self.create_full(j)
-                        break
+                    # Delete chainj.args["fixed"] contents
+                    chainj.args["fixed"] = []
+                else:
+                    # Take domains from chainj.new_domains, and remove
+                    # them from self.full_chains[0]
+                    self.replace_jdoms(chainj)
+                    
+                    # Concat the full_chain to the first j_dom bound
+                    # to chain k
+                    jdom_new = chainj.domains[j_ind].concat(
+                        self.full_chains[0])
+                    chainj.args["fixed"].remove(chainj.domains[j_ind])
+                    chainj.domains[j_ind] = jdom_new
+                    chainj.args["fixed"].append(jdom_new)
+                    # NOTE: Add jdom_new to chainj.args['chains'] dict??
+                    # Not necessary so far since jdom_new is always the
+                    # first chain, and that's the one taken if there is
+                    # no chain specified in args['chains'] dict
+
+                self.create_full(j)
 
         return None
 
