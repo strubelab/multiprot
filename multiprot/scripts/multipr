@@ -3,9 +3,11 @@
 Executable script that will call the necessary methods to create the models
 '''
 
-import sys
+import sys, time
 import multiprot.parseChains as C
 import multiprot.builder as bu
+
+start_time = time.time()
 
 # Parse arguments
 args = C.parsing(sys.argv[1:])
@@ -19,3 +21,6 @@ model = build.run()
 
 # Remove the [] when changing to more than one model
 build.write_pdbs([model],args.destination)
+
+
+print('Model built in %.2f seconds.' % (time.time()-start_time))
