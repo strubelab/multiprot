@@ -31,6 +31,7 @@ def divide(s):
     
     return r
 
+
 def path_exists(s):
     """
     Checks if path specified for output exists
@@ -42,11 +43,6 @@ def path_exists(s):
         os.makedirs(s)
     return s
 
-def number_models(n):
-    if n<10:
-        return 10
-    else:
-        return n
 
 def parsing(args=None):
     """
@@ -88,7 +84,7 @@ def parsing(args=None):
         help='Which domain will be the symmetry core, in case of symmetry other than\
          p1 specified')
 
-    parser.add_argument('--number', '-n', default=3, help='How many models do you want\
+    parser.add_argument('--number', '-n', default=1, help='How many models do you want\
         to produce? (less models = faster)')
 
     parser.add_argument('--poolsym', '-o', default='s', choices=['m', 's', 'a'], 
@@ -170,7 +166,7 @@ def create_chains(args):
             "pool_sym" : args.poolsym,
             "fixed" : rfixed,
             "symunit" : None,
-            "n" : number_models(args.number)
+            "n" : args.number
             }
 
         CHAINS.append(Chain(rnames, rdomains, args_dict, False, rchains_names))

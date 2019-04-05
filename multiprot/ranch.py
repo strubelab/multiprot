@@ -25,11 +25,14 @@ Calling and running this wrapper returns a tuple of the form
 
 import biskit as B
 import numpy as N
-import tempfile, os
+import tempfile, os, time
 import re
+import subprocess
+
 from operator import itemgetter
 from multiprot.errors import *
 from biskit.exe.executor import Executor
+
 import biskit.tools as T
 
 #### Helper tool misc functions ####
@@ -310,7 +313,7 @@ class Ranch(Executor):
         self.f_seq = os.path.join(tempdir, 'sequence.seq')
 
         self.n = n              # Number of models for the user
-        if self.n>=10:
+        if self.n >= 10:
             self.rn = self.n    # Number of models for ranch
         else:
             self.rn = 10
@@ -460,8 +463,7 @@ class Ranch(Executor):
                             try:
                                 mask_chain = element.maskFrom('chain_id', chain_id)
                                 i_mask_chain = N.nonzero(mask_chain)[0]
-                                chain_ind = 
-                                    element.atom2chainIndices(i_mask_chain)[0]
+                                chain_ind = element.atom2chainIndices(i_mask_chain)[0]
                             except IndexError:
                                 print('ERROR: The chains specified in the input '\
                                     +'do not correspond to chain IDs from the '\
@@ -599,17 +601,31 @@ class Ranch(Executor):
 
             self.pid = p.pid
 
-            output, error = p.communicate( inp )
-        
-            #convert byte string to actual string for Python 3.x compatibility
-##            if output is not None: output = output.decode(sys.stdout.encoding)
-##            if error is not None:  error  = error.decode(sys.stderr.encoding) 
+            if self.n < 10:     # if ranch has to be stopped prematurely
+                output, error = p.communicate( input=inp, timeout=1 )
+            
+            else:
+                output, error = p.communicate( input=inp )
             
             self.returncode = p.returncode
 
         except OSError as e:
             raise RunError("Couldn't run or communicate with external program: %r"\
                   % e.strerror)
+
+        except subprocess.TimeoutExpired:
+            # if the number of models requested by the user is less than 10,
+            # check self.dir_models every second until the models are produced 
+            # by ranch, then kill process
+
+            m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
+                self.dir_models)]
+
+            while len(os.listdir(self.dir_models)) < self.n:
+                time.sleep(1)
+
+            p.kill()
+            output, error = p.communicate()
 
         return output, error
 
@@ -653,9 +669,11 @@ class Ranch(Executor):
         Write more....
         """
         
-        ### Retrieve models created as PDBModels
+        # Retrieve models created as PDBModels
+        # only as many models as the user requested
         m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
             self.dir_models)]
+        m_paths = m_paths[:self.n]
 
         # self.result = [(full1, modeled_doms1), (full2, modeled_doms2), ...]
         # where 'full#' is the clean model generated, and 'modeled_doms#' is
