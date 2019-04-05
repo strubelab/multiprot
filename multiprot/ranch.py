@@ -621,9 +621,10 @@ class Ranch(Executor):
             m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
                 self.dir_models)]
 
-            while len(os.listdir(self.dir_models)) < self.n+1:
+            while len(os.listdir(self.dir_models)) < self.n:
                 time.sleep(0.5)
 
+            time.sleep(0.5) # wait for extra 0.5s to avoid the strange error
             p.kill()
             output, error = p.communicate()
 
