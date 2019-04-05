@@ -621,7 +621,7 @@ class Ranch(Executor):
             m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
                 self.dir_models)]
 
-            while len(os.listdir(self.dir_models)) < self.n:
+            while len(os.listdir(self.dir_models)) < self.n+1:
                 time.sleep(0.5)
 
             p.kill()
