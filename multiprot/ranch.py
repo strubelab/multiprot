@@ -602,7 +602,7 @@ class Ranch(Executor):
             self.pid = p.pid
 
             if self.n < 10:     # if ranch has to be stopped prematurely
-                output, error = p.communicate( input=inp, timeout=1 )
+                output, error = p.communicate( input=inp, timeout=0.5 )
             
             else:
                 output, error = p.communicate( input=inp )
@@ -615,14 +615,14 @@ class Ranch(Executor):
 
         except subprocess.TimeoutExpired:
             # if the number of models requested by the user is less than 10,
-            # check self.dir_models every second until the models are produced 
-            # by ranch, then kill process
+            # check self.dir_models every 0.5 seconds until the models are 
+            # produced by ranch, then kill process
 
             m_paths = [os.path.join(self.dir_models, f) for f in os.listdir(
                 self.dir_models)]
 
             while len(os.listdir(self.dir_models)) < self.n:
-                time.sleep(1)
+                time.sleep(0.5)
 
             p.kill()
             output, error = p.communicate()
